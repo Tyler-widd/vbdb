@@ -26,7 +26,7 @@ export default defineConfig({
       },
     }),
   ],
-  base: '/vbdb/',
+  base: '/',
   define: { 'process.env': {} },
   resolve: {
     alias: {
