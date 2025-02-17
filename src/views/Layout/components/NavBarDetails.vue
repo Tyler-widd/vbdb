@@ -5,7 +5,8 @@
                 <v-slide-group-item v-for="item in menu" :key="item.to">
                     <v-btn density="compact"
                         :to="item.to" 
-                        flat variant="outlined" 
+                        flat 
+                        variant="outlined" 
                         exact 
                         class="ma-1"
                     >

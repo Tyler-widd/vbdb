@@ -1,4 +1,5 @@
 <template>
+  <v-container class='border-thin mt-4'>
   <!-- Header -->
   <v-card-title class="text-center">
     Teams
@@ -26,51 +27,39 @@
   <!-- Data Table Section -->
   <v-data-table density="compact" :headers="headers" :items="filteredData" :search="search" class="elevation-1" dense
     :items-per-page="10">
-    <!-- Custom header slot for column width -->
-    <template #header.cell="{ header }">
-      <th :style="{ width: header.width }">
-        {{ header.title }}
-      </th>
-    </template>
-
-    <!-- Custom cell slot for team_short -->
-    <template #item.team_short="{ item }">
-      <a :href="item.school_athletic_url" target="_blank" rel="noopener noreferrer" class="text-decoration-none">
-        {{ item.team_short }}
+    <template #item.name="{ item }">
+      <a :href="item.url" target="_blank" rel="noopener noreferrer" class="text-decoration-none text-accent">
+        {{ item.name }}
       </a>
     </template>
   </v-data-table>
+</v-container>
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from "vue";
-import Papa from "papaparse";
+import { ref, computed, onMounted, watch } from "vue";
 
-/* =============================
-   Constants and Reactive State
-============================= */
+// JSON data URL
+const jsonUrl =
+  "https://raw.githubusercontent.com/Tyler-widd/vbdb-data/refs/heads/master/data/vbdb_teams.json";
 
-// CSV data URL
-const csvUrl =
-  "https://raw.githubusercontent.com/widbuntu/vbdb-info/refs/heads/main/data/vbdb_teams.csv";
-
-// Filter options for Level and Division
+// Filter options for Level (static)
 const levelOptions = ["All Levels", "NCAA Men", "NCAA Women", "Pro Women"];
-const divisionOptions = ["All Divisions", "I", "II", "III"];
+const divisionOptions = ref(["All Divisions"]);
+const conferenceOptions = ref(["All Conferences"]);
 
 // State variables
-const fullData = ref([]);         // CSV rows
-const search = ref("");           // Global search input
+const fullData = ref([]);
+const search = ref("");
 const selectedLevel = ref("All Levels");
 const selectedDivision = ref("All Divisions");
 const selectedConference = ref("All Conferences");
-const conferenceOptions = ref(["All Conferences"]);
 
 // Columns to display (and their header settings)
 const selectedColumns = [
-  { key: "team_short", title: "Team" },
-  { key: "conference_short", title: "Conf", width: "100px" },
-  { key: "division", title: "Div", width: "60px" }
+  { key: "division", title: "Div", width: "1%" },
+  { key: "name", title: "Team", width: '69%' },
+  { key: "conference", title: "Conf", width: "30%" },
 ];
 
 const headers = selectedColumns.map((col) => ({
@@ -81,15 +70,6 @@ const headers = selectedColumns.map((col) => ({
   sortable: true,
 }));
 
-/* =============================
-   Utility Functions
-============================= */
-
-/**
- * Normalize a URL.
- * - If the URL already starts with "http://" or "https://", return it as-is.
- * - Otherwise, prepend "https://".
- */
 function normalizeUrl(url) {
   if (!url) return "";
   url = url.trim();
@@ -98,16 +78,6 @@ function normalizeUrl(url) {
     : "https://" + url;
 }
 
-/* =============================
-   Computed Properties
-============================= */
-
-/**
- * Filter and transform CSV data for the table:
- * - Apply filters for Level, Division, and Conference.
- * - Map each row to only include selected columns.
- * - Normalize the URL for the team name link.
- */
 const filteredData = computed(() => {
   return fullData.value
     .filter((row) => {
@@ -117,7 +87,7 @@ const filteredData = computed(() => {
         selectedDivision.value === "All Divisions" || row.division === selectedDivision.value;
       const matchConference =
         selectedConference.value === "All Conferences" ||
-        row.conference_short === selectedConference.value;
+        row.conference === selectedConference.value;
       return matchLevel && matchDivision && matchConference;
     })
     .map((row) => {
@@ -125,46 +95,47 @@ const filteredData = computed(() => {
       selectedColumns.forEach((col) => {
         displayRow[col.key] = row[col.key];
       });
-      displayRow.school_athletic_url = normalizeUrl(row.school_athletic_url);
+      displayRow.url = normalizeUrl(row.url);
       return displayRow;
     });
 });
 
-/* =============================
-   Data Fetching Function
-============================= */
+// Watch for changes in selectedLevel and selectedDivision to update options
+watch([selectedLevel, selectedDivision], () => {
+  updateAvailableOptions();
+});
 
-/**
- * Fetch CSV data from the provided URL, parse it,
- * store the result in fullData, and build conferenceOptions dynamically.
- */
-async function fetchCsvData() {
+function updateAvailableOptions() {
+  // Get unique divisions based on level and available divisions
+  const divisions = new Set();
+  const conferences = new Set();
+  fullData.value.forEach((row) => {
+    if (
+      (selectedLevel.value === "All Levels" || row.level === selectedLevel.value) &&
+      (selectedDivision.value === "All Divisions" || row.division === selectedDivision.value)
+    ) {
+      if (row.division) divisions.add(row.division);
+      if (row.conference) conferences.add(row.conference);
+    }
+  });
+
+  // Update division and conference options
+  divisionOptions.value = ["All Divisions", ...Array.from(divisions).sort()];
+  conferenceOptions.value = ["All Conferences", ...Array.from(conferences).sort()];
+}
+
+async function fetchJsonData() {
   try {
-    const response = await fetch(csvUrl);
-    const csvText = await response.text();
-    Papa.parse(csvText, {
-      header: true,
-      skipEmptyLines: true,
-      complete: (result) => {
-        fullData.value = result.data;
-        // Build a set of unique conferences from the CSV rows.
-        const conferences = new Set();
-        result.data.forEach((row) => {
-          if (row.conference_short) {
-            conferences.add(row.conference_short);
-          }
-        });
-        conferenceOptions.value = ["All Conferences", ...Array.from(conferences).sort()];
-      },
-    });
+    const response = await fetch(jsonUrl);
+    const data = await response.json();
+    fullData.value = data;
+
+    // Initial population of division and conference options
+    updateAvailableOptions();
   } catch (error) {
-    console.error("Error fetching CSV:", error);
+    console.error("Error fetching JSON:", error);
   }
 }
 
-onMounted(fetchCsvData);
+onMounted(fetchJsonData);
 </script>
-
-<style scoped>
-/* Add any additional custom styles here */
-</style>

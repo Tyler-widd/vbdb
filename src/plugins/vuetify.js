@@ -9,22 +9,14 @@ import { createVuetify } from 'vuetify'
 const darkTheme = {
   dark: true,
   colors: {
-    primary: '#3498db',
-    secondary: '#f1c40f',
-    accent: '#8e44ad',
-    error: '#e74c3c',
-    warning: '#f1c40f',
-    info: '#2ecc71',
-    success: '#2ecc71',
-    background: '#141414',
-    surface: '#1f1f1f',
+    primary: '#adbac7',       // Primary color for buttons, links, etc.
+    secondary: '#768390',    // Secondary color for less prominent elements
+    accent: '#539bf5',       // Accent color for highlights or call-to-action elements
+    background: '#22272e',
+    surface: '#2d333b',
     'on-primary': '#ffffff',
     'on-secondary': '#ffffff',
     'on-accent': '#ffffff',
-    'on-error': '#ffffff',
-    'on-warning': '#ffffff',
-    'on-info': '#ffffff',
-    'on-success': '#ffffff',
     'on-surface': '#ffffff',
   },
 }

@@ -1,4 +1,5 @@
 <template>
+    <v-container class='border-thin mt-4'>
     <!-- Header -->
     <v-card-title class="text-center">
         Players
@@ -70,6 +71,7 @@
             </span>
         </template>
     </v-data-table>
+</v-container>
 </template>
 
 <script setup>

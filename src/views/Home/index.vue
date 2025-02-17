@@ -1,6 +1,9 @@
 <!-- src/views/Home/index.vue -->
 <template>
+    <v-container>
     <HomeDetails />
+</v-container>
+
 </template>
 
 <script setup>

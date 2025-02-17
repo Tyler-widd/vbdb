@@ -1,6 +1,6 @@
 <!-- src/App.vue -->
 <template>
-  <router-view></router-view>
+    <router-view></router-view>
 </template>
 
 <script setup>
@@ -20,8 +20,6 @@
 .v-btn--size-default .home-nav {
   padding: 0px;
 }
-
-
 
 .home-text {
   font-size: 1.25rem !important;
