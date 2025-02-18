@@ -1,5 +1,6 @@
 <template>
-  <v-container class='border-thin mt-4'>
+  <v-container class="bg-surface">
+  <div class="border-thin bg-background">
   <!-- Header -->
   <v-card-title class="text-center">
     Teams
@@ -22,10 +23,10 @@
   </v-row>
 
   <!-- Global Search Field -->
-  <v-text-field v-model="search" label="Search" variant="outlined" density="compact" hide-details class="mt-4 mb-4" />
-
+  <v-text-field v-model="search" label="Search" variant="outlined" density="compact" hide-details class="mt-4 mb-4 ml-4 mr-4" />
+  <v-divider />
   <!-- Data Table Section -->
-  <v-data-table density="compact" :headers="headers" :items="filteredData" :search="search" class="elevation-1" dense
+  <v-data-table density="compact" :headers="headers" :items="filteredData" :search="search" class="bg-background" dense
     :items-per-page="10">
     <template #item.name="{ item }">
       <a :href="item.url" target="_blank" rel="noopener noreferrer" class="text-decoration-none text-accent">
@@ -33,6 +34,7 @@
       </a>
     </template>
   </v-data-table>
+</div>
 </v-container>
 </template>
 

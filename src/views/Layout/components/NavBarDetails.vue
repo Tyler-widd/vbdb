@@ -7,7 +7,6 @@
                         :to="item.to" 
                         flat 
                         variant="outlined" 
-                        exact 
                         class="ma-1"
                     >
                         {{ item.title }}

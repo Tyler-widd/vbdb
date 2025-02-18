@@ -9,9 +9,9 @@ import { createVuetify } from 'vuetify'
 const darkTheme = {
   dark: true,
   colors: {
-    primary: '#adbac7',       // Primary color for buttons, links, etc.
-    secondary: '#768390',    // Secondary color for less prominent elements
-    accent: '#539bf5',       // Accent color for highlights or call-to-action elements
+    primary: '#adbac7',
+    secondary: '#768390',
+    accent: '#539bf5',
     background: '#22272e',
     surface: '#2d333b',
     'on-primary': '#ffffff',

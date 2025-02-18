@@ -1,6 +1,6 @@
 <!-- src/views/Home/index.vue -->
 <template>
-    <v-container>
+    <v-container class="bg-surface">
     <HomeDetails />
 </v-container>
 

@@ -1,21 +1,21 @@
 <template>
-    <v-container class='border-thin'>
+    <div class="border-thin bg-background">
     <v-card-title class="text-center">Volleyball Databased</v-card-title>
     <div class="d-flex justify-center align-center mb-2">
         <v-img src="https://raw.githubusercontent.com/widbuntu/vbdb-info/refs/heads/main/assets/favicon.svg" height="40"
             width="40" contain />
     </div>
-    <v-card variant="text" class="align-center text-center" >
-        <v-card-text class="bg-surface home-text">NCAA Women, NCAA Men, LOVB, and PVF Pro Leagues rosters, teams and
+    <v-card variant="text" class="align-center text-center " >
+        <v-card-text class="home-text">NCAA Women, NCAA Men, LOVB, and PVF Pro Leagues rosters, teams and
             results.</v-card-text>
     </v-card>
     <!-- Downloads -->
     <v-card-title class="text-center">Downloads</v-card-title>
-    <v-list lines="two">
+    <v-list lines="two" class="bg-background">
         <v-list-item class="text-center" v-for="item in urls" :key="item.title" :title="item.title" :subtitle="item.url" :href="item.url"
             target="_blank" rel="noopener noreferrer" link />
     </v-list>
-</v-container>
+    </div>
 </template>
 
 <script setup>
