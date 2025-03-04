@@ -2,28 +2,261 @@
 <html lang="en">
 
 <head>
-  <meta charset="UTF-8">
-  <link rel="icon" href="https://raw.githubusercontent.com/widbuntu/vbdb-info/refs/heads/main/assets/favicon.svg">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>VBDB</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Volleyball Database</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link rel="stylesheet" href="styles.css">
+
 </head>
 
 <body>
-  <div id="app"></div>
-  <script type="module" src="/src/main.js"></script>
-</body>
+    <!-- Navigation Bar -->
+    <nav class="navbar navbar-expand-lg navbar-dark">
+    </nav>
 
-</html>
+    <!-- Main Content -->
+    <div class="container mt-4">
+        <!-- Tab Navigation -->
+        <ul class="nav nav-tabs align-items-center" id="mainTabs" role="tablist">
+            <li class="nav-item me-3">
+                <a class="navbar-brand py-0 my-0" href="#" id="logo-link">
+                    <img src="https://raw.githubusercontent.com/widbuntu/vbdb-info/refs/heads/main/assets/favicon.svg"
+                        alt="Volleyball Database Logo" height="30">
+                </a>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link active" id="home-tab" data-bs-toggle="tab" data-bs-target="#home-content"
+                    type="button" role="tab" aria-controls="home" aria-selected="true">Home</button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="teams-tab" data-bs-toggle="tab" data-bs-target="#teams-content"
+                    type="button" role="tab" aria-controls="teams" aria-selected="false">Teams</button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="players-tab" data-bs-toggle="tab" data-bs-target="#players-content"
+                    type="button" role="tab" aria-controls="players" aria-selected="false">Players</button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="results-tab" data-bs-toggle="tab" data-bs-target="#results-content"
+                    type="button" role="tab" aria-controls="results" aria-selected="false">Results</button>
+            </li>
+        </ul>
 
-<style>
-  @font-face {
-    font-family: 'Agave Nerd Font';
-    src: url('https://github.com/ryanoasis/nerd-fonts/raw/master/patched-fonts/Agave/AgaveNerdFont-Regular.ttf') format('truetype');
-    font-weight: normal;
-    font-style: normal;
-  }
+        <!-- Tab Content -->
+        <div class="tab-content" id="mainTabContent">
+            <!-- Home Tab Content -->
+            <div class="tab-pane fade show active" id="home-content" role="tabpanel" aria-labelledby="home-tab">
+                <section class="hero-section">
+                    <div class="container">
+                        <h1 class="hero-title fade-in">Volleyball Databased</h1>
+                        <p class="hero-subtitle fade-in delay-1">
+                            Your comprehensive source for volleyball teams, players, and results across
+                            NCAA, PVF and LOVB.
+                        </p>
+                    </div>
+                </section>
 
-  body {
-    font-family: 'Agave Nerd Font', monospace !important;
-  }
-</style>
+                <section class="container mb-5">
+                    <div class="row">
+                        <div class="col-md-6 col-lg-3 mb-4">
+                            <div class="league-card fade-in delay-1" data-level="NCAA Women">
+                                <div class="league-icon">
+                                    <img src="https://www.ncaa.com/modules/custom/casablanca_core/img/sportbanners/volleyball-women.png" width="150px" height="200px">
+                                </div>
+                                <h3 class="league-title">NCAA Women</h3>
+                                <p class="league-description">Explore women's college volleyball teams, player profiles,
+                                    and match results.</p>
+                            </div>
+                        </div>
+                        <div class="col-md-6 col-lg-3 mb-4">
+                            <div class="league-card fade-in delay-2" data-level="NCAA Men">
+                                <div class="league-icon">
+                                    <img src="https://www.ncaa.com/modules/custom/casablanca_core/img/sportbanners/volleyball-men.svg" width="150px" height="200px">
+                                </div>
+                                <h3 class="league-title">NCAA Men</h3>
+                                <p class="league-description">Discover men's college volleyball teams, player
+                                    statistics, and tournament outcomes.</p>
+                            </div>
+                        </div>
+                        <div class="col-md-6 col-lg-3 mb-4">
+                            <div class="league-card fade-in delay-3" data-level="LOVB">
+                                <div class="league-icon">
+                                    <svg fill="currentColor" height="200px" viewBox="0 0 127 40" width="150px" xmlns="http://www.w3.org/2000/svg"><path d="M37.0675 34.7316C30.1366 34.7316 25.2069 29.122 25.2069 21.9511C25.2069 14.8292 30.1366 9.17067 37.0675 9.17067C43.9985 9.17067 48.9771 14.8292 48.9771 21.9511C48.9771 29.122 43.7057 34.7316 37.0675 34.7316ZM37.0675 3.90255C26.5736 3.90255 19.5449 11.9024 19.5449 21.9511C19.5449 32.0001 26.5736 40 37.0675 40C47.5616 40 54.639 32.0001 54.639 21.9511C54.639 12.0487 47.5616 3.90255 37.0675 3.90255Z"></path><path d="M70.8645 32.4878H70.7669L60.9561 4.39027H54.6597L68.0823 39.5122H73.5002L86.9228 4.39027H80.8704L70.8645 32.4878Z"></path><path d="M5.46671 4.33233H0V39.5122H15.4427L20.6498 34.3413H5.46671V4.33233Z"></path><path d="M109.812 29.9972L105.396 34.3901H96.1088V23.7072H101.01L105.396 19.3171H109.585C113.246 19.3171 115.296 21.4634 115.296 24.6341C115.296 27.7866 113.331 29.9101 109.812 29.9972ZM96.1088 9.51204H101.004L105.396 5.12188H109.293C112.319 5.12188 114.271 6.92683 114.271 9.65856C114.271 12.2874 112.657 14.044 109.799 14.2278L105.396 18.634H96.1088V9.51204ZM115.345 16.8293V16.7317C115.98 16.4878 119.933 13.9999 119.933 9.12195C119.933 3.65857 115.735 -7.62939e-06 110.122 -7.62939e-06H109.78L105.396 4.39029H90.6421V39.5121H101.001L105.396 35.1219H110.318C116.419 35.1219 120.958 31.0731 120.958 25.1219C120.958 20.0487 117.297 17.5121 115.345 16.8293Z"></path><path d="M124.102 5.66608V5.02446H124.526C124.76 5.02446 124.888 5.13839 124.888 5.34531C124.888 5.55511 124.763 5.66608 124.526 5.66608H124.102ZM125.268 5.34531C125.268 4.92908 124.978 4.67054 124.511 4.67054H123.727V6.96912H124.102V6.02007H124.346L124.924 6.96912H125.359L124.739 5.99935C125.076 5.92518 125.268 5.68933 125.268 5.34531Z"></path><path d="M124.485 7.38385C123.622 7.38385 122.92 6.68225 122.92 5.81988C122.92 4.95758 123.622 4.25598 124.485 4.25598C125.348 4.25598 126.05 4.95758 126.05 5.81988C126.05 6.68225 125.348 7.38385 124.485 7.38385ZM124.485 3.87621C123.412 3.87621 122.54 4.74814 122.54 5.81988C122.54 6.89163 123.412 7.76355 124.485 7.76355C125.557 7.76355 126.43 6.89163 126.43 5.81988C126.43 4.74814 125.557 3.87621 124.485 3.87621Z"></path></svg>
+                                </div>
+                                <h3 class="league-title">LOVB</h3>
+                                <p class="league-description">Follow the League One Volleyball teams, star players, and
+                                    competition results.</p>
+                            </div>
+                        </div>
+                        <div class="col-md-6 col-lg-3 mb-4">
+                            <div class="league-card fade-in delay-4" data-level="PVF Pro">
+                                <div class="league-icon">
+                                    <img src="https://provolleyball.com/dist/assets/logo.afbb3762.png" width="150px" height="150px">
+                                </div>
+                                <h3 class="league-title">PVF</h3>
+                                <p class="league-description">Access the Professional Volleyball Federation's teams,
+                                    rosters, and match statistics.</p>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+            </div>
+
+            <!-- Teams Tab Content -->
+            <div class="tab-pane fade" id="teams-content" role="tabpanel" aria-labelledby="teams-tab">
+                <div class="filter-section fade-in">
+                    <h4 class="filter-title">Filter Teams</h4>
+                    <div class="row filter-row">
+                        <div class="col-md-4 mb-3">
+                            <label for="team-level-filter" class="form-label">Level</label>
+                            <select class="form-select" id="team-level-filter">
+                                <option value="all" selected>All Levels</option>
+                            </select>
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label for="team-division-filter" class="form-label">Division</label>
+                            <select class="form-select" id="team-division-filter">
+                                <option value="all" selected>All Divisions</option>
+                            </select>
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label for="team-conference-filter" class="form-label">Conference</label>
+                            <select class="form-select" id="team-conference-filter">
+                                <option value="all" selected>All Conferences</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+                <div class="data-table-container fade-in delay-1">
+                    <div id="teams-data-container">
+                        <div class="no-data-message">
+                            <p>No teams data available. Please select filters to view teams.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Players Tab Content -->
+            <div class="tab-pane fade" id="players-content" role="tabpanel" aria-labelledby="players-tab">
+                <div class="filter-section fade-in">
+                    <h4 class="filter-title">Filter Players</h4>
+                    <div class="row filter-row">
+                        <div class="col-md-4 mb-3">
+                            <label for="player-level-filter" class="form-label">Level</label>
+                            <select class="form-select" id="player-level-filter">
+                                <option value="all" selected>All Levels</option>
+                            </select>
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label for="player-division-filter" class="form-label">Division</label>
+                            <select class="form-select" id="player-division-filter">
+                                <option value="all" selected>All Divisions</option>
+                            </select>
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label for="player-conference-filter" class="form-label">Conference</label>
+                            <select class="form-select" id="player-conference-filter">
+                                <option value="all" selected>All Conferences</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="row filter-row">
+                        <div class="col-md-4 mb-3">
+                            <label for="player-team-filter" class="form-label">Team</label>
+                            <select class="form-select" id="player-team-filter">
+                                <option value="all" selected>All Teams</option>
+                            </select>
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label for="player-position-filter" class="form-label">Position</label>
+                            <select class="form-select" id="player-position-filter">
+                                <option value="all" selected>All Positions</option>
+                            </select>
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label for="player-class-filter" class="form-label">Class</label>
+                            <select class="form-select" id="player-class-filter">
+                                <option value="all" selected>All Classes</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+                <div class="data-table-container fade-in delay-1">
+                    <div id="players-data-container">
+                        <div id="players-loader" class="loader">
+                            <div class="loader-spinner"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Results Tab Content -->
+            <div class="tab-pane fade" id="results-content" role="tabpanel" aria-labelledby="results-tab">
+                <div class="filter-section fade-in">
+                    <h4 class="filter-title">Filter Results</h4>
+                    <div class="row filter-row">
+                        <div class="col-md-3 mb-3">
+                            <label for="result-level-filter" class="form-label">Level</label>
+                            <select class="form-select" id="result-level-filter">
+                                <option value="all" selected>All Levels</option>
+                            </select>
+                        </div>
+                        <div class="col-md-3 mb-3">
+                            <label for="result-division-filter" class="form-label">Division</label>
+                            <select class="form-select" id="result-division-filter">
+                                <option value="all" selected>All Divisions</option>
+                            </select>
+                        </div>
+                        <div class="col-md-3 mb-3">
+                            <label for="result-conference-filter" class="form-label">Conference</label>
+                            <select class="form-select" id="result-conference-filter">
+                                <option value="all" selected>All Conferences</option>
+                            </select>
+                        </div>
+                        <div class="col-md-3 mb-3">
+                            <label for="result-team-filter" class="form-label">Team</label>
+                            <select class="form-select" id="result-team-filter">
+                                <option value="all" selected>All Teams</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+                <div class="data-table-container fade-in delay-1">
+                    <div id="results-data-container">
+                        <div class="no-data-message">
+                            <p>No results data available. Please select filters to view results.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer>
+        <div class="container">
+            <div class="row">
+                <div class="col-md-6">
+                    <p class="footer-text">© 2025 Volleyball Databased. All rights reserved.</p>
+                </div>
+                <div class="col-md-6 text-md-end">
+                    <div class="social-icons">
+                        <a href="#"><i class="fab fa-twitter"></i></a>
+                        <a href="#"><i class="fab fa-facebook-f"></i></a>
+                        <a href="#"><i class="fab fa-instagram"></i></a>
+                        <a href="#"><i class="fab fa-youtube"></i></a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <!-- JavaScript -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="js/core.js"></script>
+    <script src="js/players.js"></script>
+    <script src="js/teams.js"></script>
+    <script src="js/results.js"></script>
+    <script src="js/app.js"></script>
