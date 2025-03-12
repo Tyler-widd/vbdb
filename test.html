@@ -237,7 +237,7 @@
             // Function to fetch teams from the GitHub repository
             async function fetchTeams() {
                 try {
-                    const response = await fetch('https://raw.githubusercontent.com/Tyler-widd/vbdb-data/refs/heads/master/data/vbdb_teams.json');
+                    const response = await fetch('https://dab8-2605-a601-a9c3-af00-00-243.ngrok-free.app/api/teams');
                     if (!response.ok) {
                         throw new Error('Network response was not ok');
                     }

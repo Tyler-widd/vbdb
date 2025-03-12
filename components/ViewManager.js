@@ -255,6 +255,8 @@ class ViewManager extends HTMLElement {
   
   getTeamDetailHTML(league, teamName) {
     const iconHTML = this.getLeagueIconHTML(league);
+    // Format the team name in the same way it appears in the URL
+    const teamNameFormatted = teamName.toLowerCase().replace(/\s+/g, '-');
     
     return `
       <div class="team-detail-header">
@@ -268,67 +270,56 @@ class ViewManager extends HTMLElement {
       </div>
       
       <div class="team-detail-content">
-        <div class="team-info-placeholder">
-          <div class="placeholder-section">
-            <h2>Team Information</h2>
-            <div class="placeholder-card">
-              <div class="placeholder-img"></div>
-              <div class="placeholder-text">
-                <div class="placeholder-line"></div>
-                <div class="placeholder-line"></div>
-                <div class="placeholder-line"></div>
-              </div>
+        <!-- Use our new TeamDetail component here -->
+        <team-detail league="${league}" team-name="${teamNameFormatted}"></team-detail>
+        
+        <div class="placeholder-section">
+          <h2>Team Roster</h2>
+          <div class="placeholder-table">
+            <div class="placeholder-header">
+              <div class="placeholder-cell"></div>
+              <div class="placeholder-cell"></div>
+              <div class="placeholder-cell"></div>
+              <div class="placeholder-cell"></div>
+            </div>
+            <div class="placeholder-row">
+              <div class="placeholder-cell"></div>
+              <div class="placeholder-cell"></div>
+              <div class="placeholder-cell"></div>
+              <div class="placeholder-cell"></div>
+            </div>
+            <div class="placeholder-row">
+              <div class="placeholder-cell"></div>
+              <div class="placeholder-cell"></div>
+              <div class="placeholder-cell"></div>
+              <div class="placeholder-cell"></div>
+            </div>
+            <div class="placeholder-row">
+              <div class="placeholder-cell"></div>
+              <div class="placeholder-cell"></div>
+              <div class="placeholder-cell"></div>
+              <div class="placeholder-cell"></div>
             </div>
           </div>
-          
-          <div class="placeholder-section">
-            <h2>Team Roster</h2>
-            <div class="placeholder-table">
-              <div class="placeholder-header">
-                <div class="placeholder-cell"></div>
-                <div class="placeholder-cell"></div>
-                <div class="placeholder-cell"></div>
-                <div class="placeholder-cell"></div>
-              </div>
-              <div class="placeholder-row">
-                <div class="placeholder-cell"></div>
-                <div class="placeholder-cell"></div>
-                <div class="placeholder-cell"></div>
-                <div class="placeholder-cell"></div>
-              </div>
-              <div class="placeholder-row">
-                <div class="placeholder-cell"></div>
-                <div class="placeholder-cell"></div>
-                <div class="placeholder-cell"></div>
-                <div class="placeholder-cell"></div>
-              </div>
-              <div class="placeholder-row">
-                <div class="placeholder-cell"></div>
-                <div class="placeholder-cell"></div>
-                <div class="placeholder-cell"></div>
-                <div class="placeholder-cell"></div>
-              </div>
+        </div>
+        
+        <div class="placeholder-section">
+          <h2>Recent Results</h2>
+          <div class="placeholder-results">
+            <div class="placeholder-result-item">
+              <div class="placeholder-date"></div>
+              <div class="placeholder-teams"></div>
+              <div class="placeholder-score"></div>
             </div>
-          </div>
-          
-          <div class="placeholder-section">
-            <h2>Recent Results</h2>
-            <div class="placeholder-results">
-              <div class="placeholder-result-item">
-                <div class="placeholder-date"></div>
-                <div class="placeholder-teams"></div>
-                <div class="placeholder-score"></div>
-              </div>
-              <div class="placeholder-result-item">
-                <div class="placeholder-date"></div>
-                <div class="placeholder-teams"></div>
-                <div class="placeholder-score"></div>
-              </div>
-              <div class="placeholder-result-item">
-                <div class="placeholder-date"></div>
-                <div class="placeholder-teams"></div>
-                <div class="placeholder-score"></div>
-              </div>
+            <div class="placeholder-result-item">
+              <div class="placeholder-date"></div>
+              <div class="placeholder-teams"></div>
+              <div class="placeholder-score"></div>
+            </div>
+            <div class="placeholder-result-item">
+              <div class="placeholder-date"></div>
+              <div class="placeholder-teams"></div>
+              <div class="placeholder-score"></div>
             </div>
           </div>
         </div>
