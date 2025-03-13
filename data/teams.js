@@ -82,83 +82,27 @@ const teamsData = {
 };
 
 // Fetch the data from the URL
-fetch('https://volleyballdatabased-db-tyler-widd.turso.io/v2/pipeline', {
-  method: 'POST',
-  headers: {
-    'Authorization': 'Bearer eyJhbGciOiJFZERTQSIsInR5cCI6IkpXVCJ9.eyJhIjoicnciLCJpYXQiOjE3NDE4MTcwODQsImlkIjoiMDRiNzM0N2UtYTkzYi00MzczLWE1NGUtZTYzZTdlNmZjMGUzIn0.rJBRCBt6yz3TXtQA5uXSbMS85Oj9mcZsNV4ptogJPgE7mBAziCv8nfmJp6NcqwQvRDNvlQVwXXCvuKifdspHBg',
-    'Content-Type': 'application/json'
-  },
-  body: JSON.stringify({
-    requests: [
-      { type: "execute", stmt: { sql: "SELECT name, url, conference, level, img, division FROM teams" } },
-      { type: "close" }
-    ]
+fetch('https://api.volleyballdatabased.com/api/teams')
+  .then(response => {
+    if (!response.ok) {
+      throw new Error('Network response was not ok');
+    }
+    // Get text first so we can fix the JSON
+    return response.text();
   })
-})
-.then(response => response.json())
-.then(data => {
-  // Get the rows array
-  const rows = data.results[0].response.result.rows;
-  
-  // Transform the data
-  const formattedData = rows.map(row => {
-    return {
-      name: row[0].value,
-      url: row[1].value,
-      conference: row[2].value,
-      level: row[3].value,
-      img: row[4].value,
-      division: row[5].value,
-      img_id: "0" 
-    };
-  });
-  
-  // Skip directly to updating teamsData
-  const processed = processTeamData(formattedData);
-  
-  // Update the teamsData object with the processed data
-  Object.keys(processed).forEach(key => {
-    teamsData[key] = processed[key];
-  });
-  
-  // Log success message
-  console.log(`Loaded ${Object.values(processed).flat().length} teams across all leagues`);
-  
-  // Dispatch an event to notify components that data is ready
-  const event = new CustomEvent('teams-data-loaded', {
-    detail: { teamsData }
-  });
-  document.dispatchEvent(event);
-  
-  // Also make the data available globally
-  window.vbdbData = {
-    teamsData,
-    leagueIcons,
-    lovbSvg
-  };
-  
-  console.log("teamsData ready:", teamsData);
-})
-.catch(error => {
-  console.error('Error fetching teams data:', error);
-  const event = new CustomEvent('teams-data-error', {
-    detail: { error }
-  });
-  document.dispatchEvent(event);
-})
-  // .then(text => {
-  //   // Fix NaN values in the JSON string before parsing
-  //   const fixedText = text
-  //     .replace(/: *NaN/g, ': null')
-  //     .replace(/: *undefined/g, ': null');
+  .then(text => {
+    // Fix NaN values in the JSON string before parsing
+    const fixedText = text
+      .replace(/: *NaN/g, ': null')
+      .replace(/: *undefined/g, ': null');
     
-  //   try {
-  //     return JSON.parse(fixedText);
-  //   } catch (error) {
-  //     console.error('Error parsing JSON:', error);
-  //     throw new Error('Invalid JSON format after fixing NaN values');
-  //   }
-  // })
+    try {
+      return JSON.parse(fixedText);
+    } catch (error) {
+      console.error('Error parsing JSON:', error);
+      throw new Error('Invalid JSON format after fixing NaN values');
+    }
+  })
   .then(data => {
     // Process the data and update our teamsData object
     const processed = processTeamData(data);
