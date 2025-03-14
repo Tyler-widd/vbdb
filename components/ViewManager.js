@@ -2,6 +2,11 @@ class ViewManager extends HTMLElement {
   constructor() {
     super();
     this.attachShadow({ mode: 'open' });
+    // Handle redirect from 404 page
+    this.pendingRedirect = sessionStorage.getItem('redirectPath');
+    if (this.pendingRedirect) {
+      sessionStorage.removeItem('redirectPath');
+    }
     this.activeLeague = null;
     this.activeTab = 'overview'; // Default tab
     this.activeTeam = null; // For team detail view
@@ -54,8 +59,81 @@ class ViewManager extends HTMLElement {
         this.hideLeagueContent(false);
       }
     });
+
+    // Handle any pending redirect after a short delay to ensure data is loaded
+    if (this.pendingRedirect) {
+      setTimeout(() => {
+        this.handlePathRoute(this.pendingRedirect);
+      }, 500);
+    }
   }
   
+  handlePathRoute(path) {
+    console.log("Handling route path:", path); // Debugging log
+    
+    // Remove leading slash if present
+    if (path.startsWith('/')) {
+      path = path.substring(1);
+    }
+    
+    const pathParts = path.split('/').filter(part => part);
+    
+    if (pathParts.length >= 1) {
+      const league = pathParts[0].replace(/-/g, ' ');
+      
+      // Convert kebab case back to proper case for league names
+      let properLeague;
+      switch (league.toLowerCase()) {
+        case 'pvf-pro':
+        case 'pvf pro':
+          properLeague = 'PVF Pro';
+          break;
+        case 'lovb':
+          properLeague = 'LOVB';
+          break;
+        case 'ncaa-women':
+        case 'ncaa women':
+          properLeague = 'NCAA Women';
+          break;
+        case 'ncaa-men':
+        case 'ncaa men':
+          properLeague = 'NCAA Men';
+          break;
+        default:
+          properLeague = league;
+      }
+      
+      // Handle data loading - ensure data is loaded before trying to render
+      const waitForData = () => {
+        if (window.vbdbData && window.vbdbData.teamsData) {
+          // Now process the route based on path parts
+          if (pathParts.length >= 3 && pathParts[1] === 'team') {
+            // Handle team detail view
+            const teamName = pathParts[2].replace(/-/g, ' ');
+            console.log(`Showing team: ${teamName} in league: ${properLeague}`); // Debugging
+            this.showTeamDetail(properLeague, teamName, false);
+          } else if (pathParts.length >= 2) {
+            // Handle league tab view
+            const tab = pathParts[1];
+            console.log(`Showing league: ${properLeague}, tab: ${tab}`); // Debugging
+            this.showLeagueContent(properLeague, tab, false);
+          } else {
+            // Just league view
+            console.log(`Showing league: ${properLeague}`); // Debugging
+            this.showLeagueContent(properLeague, 'overview', false);
+          }
+        } else {
+          // Data not loaded yet, try again after a short delay
+          setTimeout(waitForData, 100);
+        }
+      };
+      
+      waitForData();
+    } else {
+      console.log("Invalid path format:", path); // Debugging
+    }
+  }
+
   handleLeagueSelected(event) {
     const league = event.detail.level;
     this.showLeagueContent(league, 'teams', true); // Show teams tab by default
@@ -116,7 +194,7 @@ class ViewManager extends HTMLElement {
     
     // Show the overlay with animation
     overlay.classList.add('active');
-    document.body.style.overflow = 'hidden'; // Prevent scrolling of background
+    document.body.style.overflow = 'hidden';
     
     // Animate content in
     setTimeout(() => {

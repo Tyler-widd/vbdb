@@ -81,6 +81,57 @@
     <script src="components/tabs/PlaceholderTabs.js"></script>
     <script src="components/ViewManager.js"></script>
     <script src="components/views/TeamDetailComponent.js"></script>
+
+    <script>
+// Place this script at the bottom of your body tag in index.html
+// Replace your existing redirect script with this one
+document.addEventListener('DOMContentLoaded', function() {
+  // Check if we're running on a local server with a path that needs handling
+  if (location.pathname !== '/' && 
+      !location.pathname.includes('.html') && 
+      !location.pathname.includes('.js') && 
+      !location.pathname.includes('.css')) {
+    
+    // We're likely on a development server with a path that needs redirection
+    // Store the path and reload to the root
+    const fullPath = location.pathname + location.search;
+    sessionStorage.setItem('redirectPath', fullPath);
+    location.href = '/';
+    
+  } else {
+    // Check for stored paths from either method
+    const path = sessionStorage.getItem('redirectPath') || localStorage.getItem('vbdb_path');
+    
+    if (path) {
+      // Clear both storage locations to avoid confusion
+      sessionStorage.removeItem('redirectPath');
+      localStorage.removeItem('vbdb_path');
+      
+      // Wait for components to be defined and data to be loaded
+      const checkAndRoute = function() {
+        if (customElements.get('view-manager') && 
+            document.querySelector('view-manager') && 
+            window.vbdbData && 
+            window.vbdbData.teamsData) {
+          
+          // Use a small timeout to ensure everything is loaded
+          setTimeout(() => {
+            // Get the ViewManager instance and route to the saved path
+            const viewManager = document.querySelector('view-manager');
+            viewManager.handlePathRoute(path);
+          }, 500);
+          
+        } else {
+          // Components or data not ready yet, try again after a short delay
+          setTimeout(checkAndRoute, 100);
+        }
+      };
+      
+      checkAndRoute();
+    }
+  }
+});
+      </script>
 </body>
 
 </html>

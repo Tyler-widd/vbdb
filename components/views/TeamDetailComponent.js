@@ -114,8 +114,24 @@ class TeamDetail extends HTMLElement {
     // Display team image if available, otherwise show placeholder
     let teamImageHTML = '<div class="team-image-placeholder"></div>';
     if (this.teamData && this.teamData.img) {
-      teamImageHTML = `<img src="${this.teamData.img}" alt="${this.teamData.name}" class="team-image">`;
+      // Check if the image data is an SVG string (starts with <svg)
+      if (this.teamData.img.includes('<svg')) {
+        // Decode the HTML entities in the SVG string
+        const decodedSvg = this.teamData.img
+          .replace(/\\u003C/g, '<')
+          .replace(/\\u003E/g, '>')
+          .replace(/\\"/g, '"');
+        
+        // Use the SVG directly in the HTML
+        teamImageHTML = `<div class="svg-container">${decodedSvg}</div>`;
+      } else {
+        // Regular image URL
+        teamImageHTML = `<img src="${this.teamData.img}" alt="${this.teamData.name}" class="team-image">`;
+      }
     }
+    
+    // Check if team is LOVB or PVF to determine display format
+    const isProfessionalLeague = this.teamData && (this.teamData.conference === 'LOVB' || this.teamData.conference === 'PVF');
     
     this.shadowRoot.innerHTML = `
       <style>
@@ -148,6 +164,20 @@ class TeamDetail extends HTMLElement {
           max-width: 100%;
           max-height: 100%;
           object-fit: contain;
+        }
+        
+        .svg-container {
+          width: 100%;
+          height: 100%;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+        }
+        
+        .svg-container svg {
+          width: 80%;
+          height: 80%;
+          color: var(--text, #e0e0e0); /* For SVGs using currentColor */
         }
         
         .team-image-placeholder {
@@ -204,14 +234,18 @@ class TeamDetail extends HTMLElement {
         <div class="team-info">
           <h3 class="team-name">${this.teamData?.name || teamName}</h3>
           ${this.teamData ? `
-            <p class="team-meta"><strong>Conference:</strong> ${this.teamData.conference}</p>
-            <p class="team-meta"><strong>Division:</strong> ${this.teamData.division}</p>
+            ${isProfessionalLeague ? 
+              `<p class="team-meta"><strong>League:</strong> ${this.teamData.conference}</p>` : 
+              `<p class="team-meta"><strong>Conference:</strong> ${this.teamData.conference}</p>
+               <p class="team-meta"><strong>Division:</strong> ${this.teamData.division}</p>`
+            }
             <p class="team-meta"><strong>Website:</strong> <a href="https://${this.teamData.url}" target="_blank" class="team-url">${this.teamData.url}</a></p>
           ` : '<p class="team-meta">Team details not found</p>'}
         </div>
       </div>
     `;
   }
+  
 }
 
 customElements.define('team-detail', TeamDetail);
