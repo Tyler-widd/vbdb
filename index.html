@@ -83,55 +83,139 @@
     <script src="components/views/TeamDetailComponent.js"></script>
 
     <script>
-// Place this script at the bottom of your body tag in index.html
-// Replace your existing redirect script with this one
+// Add this script to the bottom of your index.html (replace existing redirect script)
 document.addEventListener('DOMContentLoaded', function() {
-  // Check if we're running on a local server with a path that needs handling
-  if (location.pathname !== '/' && 
-      !location.pathname.includes('.html') && 
-      !location.pathname.includes('.js') && 
-      !location.pathname.includes('.css')) {
-    
-    // We're likely on a development server with a path that needs redirection
-    // Store the path and reload to the root
-    const fullPath = location.pathname + location.search;
-    sessionStorage.setItem('redirectPath', fullPath);
-    location.href = '/';
-    
-  } else {
-    // Check for stored paths from either method
-    const path = sessionStorage.getItem('redirectPath') || localStorage.getItem('vbdb_path');
-    
-    if (path) {
-      // Clear both storage locations to avoid confusion
-      sessionStorage.removeItem('redirectPath');
-      localStorage.removeItem('vbdb_path');
+  // Create or get a global loader for team data
+  window.loadTeamData = function() {
+    return new Promise((resolve, reject) => {
+      console.log("Initializing team data loading...");
       
-      // Wait for components to be defined and data to be loaded
-      const checkAndRoute = function() {
-        if (customElements.get('view-manager') && 
-            document.querySelector('view-manager') && 
-            window.vbdbData && 
-            window.vbdbData.teamsData) {
-          
-          // Use a small timeout to ensure everything is loaded
-          setTimeout(() => {
-            // Get the ViewManager instance and route to the saved path
-            const viewManager = document.querySelector('view-manager');
-            viewManager.handlePathRoute(path);
-          }, 500);
-          
+      // Check if data is already loaded
+      if (window.vbdbData && window.vbdbData.teamsData) {
+        console.log("Team data already loaded");
+        resolve(window.vbdbData.teamsData);
+        return;
+      }
+      
+      // Load the data
+      console.log("Loading team data...");
+      
+      // Set up event listeners
+      const loadedHandler = () => {
+        console.log("Team data loaded successfully");
+        document.removeEventListener('teams-data-loaded', loadedHandler);
+        document.removeEventListener('teams-data-error', errorHandler);
+        
+        if (window.vbdbData && window.vbdbData.teamsData) {
+          resolve(window.vbdbData.teamsData);
         } else {
-          // Components or data not ready yet, try again after a short delay
-          setTimeout(checkAndRoute, 100);
+          reject(new Error("Data loaded but vbdbData.teamsData is not available"));
         }
       };
       
-      checkAndRoute();
+      const errorHandler = (event) => {
+        console.error("Error loading team data:", event.detail.error);
+        document.removeEventListener('teams-data-loaded', loadedHandler);
+        document.removeEventListener('teams-data-error', errorHandler);
+        reject(event.detail.error);
+      };
+      
+      document.addEventListener('teams-data-loaded', loadedHandler);
+      document.addEventListener('teams-data-error', errorHandler);
+      
+      // Manually dispatch the load data event if needed
+      // If your app already loads the data on startup, this might not be needed
+      if (typeof initiateDataLoad === 'function') {
+        initiateDataLoad();
+      }
+      
+      // Set a timeout in case the event never fires
+      setTimeout(() => {
+        if (!window.vbdbData || !window.vbdbData.teamsData) {
+          reject(new Error("Timed out waiting for team data to load"));
+        }
+      }, 10000);
+    });
+  };
+  
+  // Handle URL routing
+  const handleRouting = async () => {
+    console.log("Setting up routing...");
+    
+    // Check if we need to handle a specific path
+    if (location.pathname !== '/' && 
+        !location.pathname.includes('.html') && 
+        !location.pathname.includes('.js') && 
+        !location.pathname.includes('.css')) {
+      
+      // Store the path and redirect to the root with hash
+      const fullPath = location.pathname + location.search;
+      window.location.href = '/#/' + fullPath.substring(1);
+      return;
     }
+    
+    // Check for hash route or stored path
+    const path = window.location.hash.startsWith('#/') ? 
+                 window.location.hash.substring(2) : 
+                 (sessionStorage.getItem('redirectPath') || localStorage.getItem('vbdb_path'));
+    
+    if (path) {
+      // Clear stored paths
+      sessionStorage.removeItem('redirectPath');
+      localStorage.removeItem('vbdb_path');
+      
+      try {
+        // Ensure data is loaded before routing
+        await window.loadTeamData();
+        
+        // Wait for components to be defined
+        await waitForComponents(['view-manager']);
+        
+        // Get ViewManager and route to the path
+        const viewManager = document.querySelector('view-manager');
+        if (viewManager) {
+          console.log("Routing to:", path);
+          viewManager.handlePathRoute(path);
+        } else {
+          console.error("ViewManager component not found");
+        }
+      } catch (error) {
+        console.error("Error during routing:", error);
+      }
+    }
+  };
+  
+  // Helper to wait for components to be defined
+  function waitForComponents(componentNames, maxWaitTime = 5000) {
+    return new Promise((resolve, reject) => {
+      const startTime = Date.now();
+      
+      const checkComponents = () => {
+        const allDefined = componentNames.every(name => 
+          customElements.get(name) && document.querySelector(name)
+        );
+        
+        if (allDefined) {
+          resolve();
+          return;
+        }
+        
+        if (Date.now() - startTime > maxWaitTime) {
+          reject(new Error(`Timed out waiting for components: ${componentNames.join(', ')}`));
+          return;
+        }
+        
+        setTimeout(checkComponents, 100);
+      };
+      
+      checkComponents();
+    });
   }
+  
+  // Start routing process
+  handleRouting();
 });
-      </script>
+    </script>
 </body>
 
 </html>
