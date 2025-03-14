@@ -5,14 +5,11 @@
   <title>Redirecting...</title>
   <script>
     // Get the full path including search parameters
-    var fullPath = window.location.pathname + window.location.search;
+    var fullPath = window.location.pathname.substring(1) + window.location.search;
     
-    // Store the current URL path in both storage types for compatibility
-    sessionStorage.setItem('redirectPath', fullPath);
-    localStorage.setItem('vbdb_path', fullPath);
-    
-    // Redirect to the root with a cache-busting parameter to prevent browser caching
-    window.location.href = '/?redirect=' + Date.now();
+    // Use hash-based routing instead of path-based routing
+    // This approach works even without server configuration
+    window.location.replace('/#/' + fullPath);
   </script>
 </head>
 <body>

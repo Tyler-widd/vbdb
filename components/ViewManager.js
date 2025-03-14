@@ -35,6 +35,8 @@ class ViewManager extends HTMLElement {
   connectedCallback() {
     // Set up initial structure with home view always present
     this.render();
+
+    this.initializeHashRouting();
     
     // Listen for league selection events
     document.addEventListener('league-selected', this.handleLeagueSelected.bind(this));
@@ -68,6 +70,26 @@ class ViewManager extends HTMLElement {
     }
   }
   
+  initializeHashRouting() {
+    // Handle hash changes (both initial load and when hash changes)
+    const handleHashChange = () => {
+      const hash = window.location.hash;
+      if (hash && hash.startsWith('#/')) {
+        // Remove the #/ prefix to get the path
+        const path = hash.substring(2);
+        this.handlePathRoute(path);
+      }
+    };
+  
+    // Listen for hash changes
+    window.addEventListener('hashchange', handleHashChange);
+    
+    // Handle initial hash on page load
+    if (window.location.hash) {
+      handleHashChange();
+    }
+  }
+
   handlePathRoute(path) {
     console.log("Handling route path:", path); // Debugging log
     
@@ -150,8 +172,8 @@ class ViewManager extends HTMLElement {
     
     // Update browser history if needed
     if (updateHistory) {
-      const url = `/${league.toLowerCase().replace(/\s+/g, '-')}/team/${teamName.toLowerCase().replace(/\s+/g, '-')}`;
-      window.history.pushState({ league, teamName }, `${teamName} - ${league}`, url);
+      const hashUrl = `#/${league.toLowerCase().replace(/\s+/g, '-')}/team/${teamName.toLowerCase().replace(/\s+/g, '-')}`;
+      window.history.pushState({ league, teamName }, `${teamName} - ${league}`, hashUrl);
     }
     
     // Get the overlay element
@@ -181,8 +203,8 @@ class ViewManager extends HTMLElement {
     
     // Update browser history if needed
     if (updateHistory) {
-      const url = `/${league.toLowerCase().replace(/\s+/g, '-')}/${tab}`;
-      window.history.pushState({ league, tab }, `${league} - ${tab.charAt(0).toUpperCase() + tab.slice(1)}`, url);
+      const hashUrl = `#/${league.toLowerCase().replace(/\s+/g, '-')}/${tab}`;
+      window.history.pushState({ league, tab }, `${league} - ${tab.charAt(0).toUpperCase() + tab.slice(1)}`, hashUrl);
     }
     
     // Get the overlay element
@@ -211,7 +233,7 @@ class ViewManager extends HTMLElement {
   hideLeagueContent(updateHistory = true) {
     // Update browser history if needed
     if (updateHistory) {
-      window.history.pushState({ league: null }, 'Volleyball Database', '/');
+      window.history.pushState({ league: null }, 'Volleyball Database', '#/');
     }
     
     // Get the overlay and content container
