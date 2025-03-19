@@ -362,17 +362,17 @@ class ViewManager extends HTMLElement {
 
   handlePathRoute(path) {
     console.log("Handling route path:", path);
-
+  
     // Remove leading slash if present
     if (path.startsWith('/')) {
       path = path.substring(1);
     }
-
+  
     const pathParts = path.split('/').filter(part => part);
-
+  
     if (pathParts.length >= 1) {
       const levelSegment = pathParts[0].replace(/-/g, ' ');
-
+  
       // Convert kebab case back to proper case for level names
       let properLevel;
       switch (levelSegment.toLowerCase()) {
@@ -394,22 +394,22 @@ class ViewManager extends HTMLElement {
         default:
           properLevel = levelSegment;
       }
-
+  
       const waitForData = () => {
         if (window.vbdbData && window.vbdbData.teamsData) {
           if (pathParts.length >= 3 && pathParts[1] === 'team') {
-            const urlTeamName = pathParts[2].replace(/-/g, ' ');
-            const formattedName = this.toTitleCase(urlTeamName);
-
-            // Use our new robust method to find the team
-            const teamData = this.findTeamInData(properLevel, formattedName);
-
+            const teamId = pathParts[2];
+            
+            // Find team by ID instead of name
+            const teamData = this.findTeamById(properLevel, teamId);
+  
             if (teamData) {
-              console.log(`Found team: ${teamData.name} in ${properLevel}`);
-              this.showTeamDetail(properLevel, teamData.name, false);
+              console.log(`Found team by ID: ${teamData.name} (ID: ${teamId}) in ${properLevel}`);
+              this.showTeamDetail(properLevel, teamData.name, teamId, false);
             } else {
-              console.warn(`Team not found, using formatted name: ${formattedName}`);
-              this.showTeamDetail(properLevel, formattedName, false);
+              console.warn(`Team with ID ${teamId} not found in ${properLevel}`);
+              // Attempt to show using whatever info we have
+              this.showTeamDetail(properLevel, `Team ${teamId}`, teamId, false);
             }
           } else if (pathParts.length >= 2) {
             // Handle level tab view
@@ -426,7 +426,7 @@ class ViewManager extends HTMLElement {
           setTimeout(waitForData, 100);
         }
       };
-
+  
       waitForData();
     } else {
       console.log("Invalid path format:", path);
@@ -441,9 +441,9 @@ class ViewManager extends HTMLElement {
   handleTeamSelected(event) {
     console.log("Team selected event:", event.detail);
     
-    // Get the team name and level/league from the event
-    // Support both 'level' and 'league' properties for backward compatibility
+    // Get the team name, id and level/league from the event
     const teamName = event.detail.teamName;
+    const teamId = event.detail.teamId || event.detail.id; // Support both properties
     const level = event.detail.league;
     
     if (!level) {
@@ -451,25 +451,28 @@ class ViewManager extends HTMLElement {
       return;
     }
     
-    console.log(`Handling team selection: ${teamName} in ${level}`);
-    this.showTeamDetail(level, teamName, true);
+    if (!teamId) {
+      console.error("No team ID found in team-selected event:", event.detail);
+      return;
+    }
+    
+    console.log(`Handling team selection: ${teamName} (ID: ${teamId}) in ${level}`);
+    this.showTeamDetail(level, teamName, teamId, true);
   }
 
   // Add this to the showTeamDetail method in ViewManager
-  showTeamDetail(level, teamName, updateHistory = true) {
-    console.log(`showTeamDetail called with level: "${level}", teamName: "${teamName}"`);
+  showTeamDetail(level, teamName, teamId, updateHistory = true) {
+    console.log(`showTeamDetail called with level: "${level}", teamName: "${teamName}", teamId: "${teamId}"`);
     
     // Store the active level and team
     this.activeLeague = level;
     this.activeTeam = teamName;
-    
-    // Format the team name for URLs (kebab-case)
-    const teamNameForURL = teamName.toLowerCase().replace(/\s+/g, '-');
+    this.activeTeamId = teamId;
     
     // Update browser history if needed
     if (updateHistory) {
-      const hashUrl = `#/${level.toLowerCase().replace(/\s+/g, '-')}/team/${teamNameForURL}`;
-      window.history.pushState({ league: level, teamName }, `${teamName} - ${level}`, hashUrl);
+      const hashUrl = `#/${level.toLowerCase().replace(/\s+/g, '-')}/team/${teamId}`;
+      window.history.pushState({ league: level, teamName, teamId }, `${teamName} - ${level}`, hashUrl);
     }
     
     // Get the overlay element
@@ -478,20 +481,16 @@ class ViewManager extends HTMLElement {
     // Update content before showing the overlay
     const contentContainer = overlay.querySelector('.league-content-container');
     
-    // Pass the proper display version of the team name to getTeamDetailHTML
-    contentContainer.innerHTML = this.getTeamDetailHTML(level, teamName);
+    // Pass teamId to getTeamDetailHTML
+    contentContainer.innerHTML = this.getTeamDetailHTML(level, teamName, teamId);
     
     // Show the overlay with animation
     overlay.classList.add('active');
     document.body.style.overflow = 'hidden'; // Prevent scrolling of background
     
-    // Important: Let the browser finish this update before triggering the team-detail initialization
-    // This will allow the TeamDetail component to be properly created and initialized
+    // Let the browser finish this update before triggering the team-detail initialization
     setTimeout(() => {
-      // Now that the component is in the DOM, let it initialize
       contentContainer.classList.add('active');
-      
-      // Add event listeners after content is loaded
       this.addTeamDetailEventListeners();
     }, 50);
   }
@@ -624,6 +623,83 @@ class ViewManager extends HTMLElement {
     });
   }
 
+  findTeamById(level, teamId) {
+    console.log(`Searching for team with ID "${teamId}" in level "${level}"...`);
+    
+    if (!window.vbdbData || !window.vbdbData.teamsData) {
+      console.error("No data available - vbdbData or teamsData is undefined");
+      return null;
+    }
+    
+    // Log all available keys for debugging
+    const availableLevels = Object.keys(window.vbdbData.teamsData);
+    console.log("Available levels in data:", availableLevels);
+    
+    // Try different casing/formats of the level name
+    const levelVariants = [
+      level,
+      level.toUpperCase(),
+      level.toLowerCase(),
+      level.split(' ').map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()).join(' ')
+    ];
+    
+    // Try to find teams using any of the level variants
+    let teams = null;
+    for (const levelVariant of levelVariants) {
+      if (window.vbdbData.teamsData[levelVariant] && window.vbdbData.teamsData[levelVariant].length > 0) {
+        console.log(`Found teams using level key: "${levelVariant}"`);
+        teams = window.vbdbData.teamsData[levelVariant];
+        break;
+      }
+    }
+    
+    // If still no teams found, get all teams from all levels
+    if (!teams || teams.length === 0) {
+      console.log("Trying to find team by ID across all data...");
+      
+      const allTeams = [];
+      for (const levelKey of availableLevels) {
+        if (Array.isArray(window.vbdbData.teamsData[levelKey])) {
+          allTeams.push(...window.vbdbData.teamsData[levelKey]);
+        }
+      }
+      
+      // Try to find by ID
+      const idMatch = allTeams.find(team => 
+        team.id === teamId || 
+        team.teamId === teamId ||
+        (team.id && team.id.toString() === teamId) ||
+        (team.teamId && team.teamId.toString() === teamId)
+      );
+      
+      if (idMatch) {
+        console.log(`Found team "${idMatch.name}" with ID "${teamId}" in a different level: ${idMatch.level || idMatch.league || 'unknown'}`);
+        return idMatch;
+      }
+      
+      console.error(`No team found with ID: "${teamId}" in any level`);
+      return null;
+    }
+    
+    console.log(`Found ${teams.length} teams for search`);
+    
+    // Find the team by ID
+    const match = teams.find(team => 
+      team.id === teamId || 
+      team.teamId === teamId ||
+      (team.id && team.id.toString() === teamId) ||
+      (team.teamId && team.teamId.toString() === teamId)
+    );
+    
+    if (match) {
+      console.log(`Found team with ID "${teamId}": "${match.name}"`);
+      return match;
+    }
+    
+    console.error(`Team with ID "${teamId}" not found`);
+    return null;
+  }
+
   initializeTabComponents(league, activeTab) {
     // Set the league attribute on the active tab component
     const tabContent = this.shadowRoot.querySelector(`.tab-content[data-tab="${activeTab}"]`);
@@ -653,7 +729,7 @@ class ViewManager extends HTMLElement {
     return '';
   }
 
-  getTeamDetailHTML(level, teamName) {
+  getTeamDetailHTML(level, teamName, teamId) {
     const iconHTML = this.getLeagueIconHTML(level);
     
     return `
@@ -668,8 +744,8 @@ class ViewManager extends HTMLElement {
       </div>
       
       <div class="team-detail-content">
-        <!-- Pass level attribute correctly -->
-        <team-detail level="${level}" team-name="${teamName}"></team-detail>
+        <!-- Pass team-id attribute to the component -->
+        <team-detail level="${level}" team-name="${teamName}" team-id="${teamId}"></team-detail>
         
         <div class="placeholder-section">
           <h2>Team Roster</h2>

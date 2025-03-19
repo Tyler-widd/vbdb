@@ -35,15 +35,13 @@ function processTeamData(data) {
     let leagueKey = '';
     
     // Determine which league this team belongs to
-    if (team.conference === 'LOVB') {
+    if (team.level === 'Pro' && team.conference === 'LOVB') {
       leagueKey = 'LOVB';
-    } else if (team.conference === 'PVF') {
+    } else if (team.level === 'Pro' && team.conference === 'PVF') {
       leagueKey = 'PVF Pro';
-    } else if (team.level === 'DI Men' || team.level === 'DII Men' || team.level === 'DIII Men' || 
-        (team.level && team.level.includes('Men'))) {
+    } else if (team.level === "NCAA M") {
       leagueKey = 'NCAA Men';
-    } else if (team.level === 'DI Women' || team.level === 'DII Women' || team.level === 'DIII Women' || 
-        (team.level && team.level.includes('Women'))) {
+    } else if (team.level === "NCAA W") {
       leagueKey = 'NCAA Women';
     } else {
       // Skip teams we can't categorize
@@ -51,11 +49,11 @@ function processTeamData(data) {
     }
     
     // Create a unique ID
-    const id = `${leagueKey.toLowerCase().replace(/\s+/g, '-')}-${index}`;
+    const id = team.team_id || `${leagueKey.toLowerCase().replace(/\s+/g, '-')}-${index}`;
     
     // Create team object with only the data from the JSON, ensuring no invalid values
     const teamObj = {
-      id,
+      team_id: team.team_id || id,
       name: team.name || '',
       url: team.url || '',
       img: team.img || '',

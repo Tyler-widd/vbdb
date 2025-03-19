@@ -134,7 +134,7 @@ class TeamsTab extends HTMLElement {
           link.getAttribute('data-page')) {
           link.addEventListener('click', (e) => {
             e.preventDefault();
-            const page = parseInt(e.target.getAttribute('data-page'));
+            const page = e.target.getAttribute('data-page');
             this.changePage(page);
           });
         }
@@ -148,6 +148,7 @@ class TeamsTab extends HTMLElement {
         // Get team information
         const teamName = card.querySelector('.team-name').textContent;
         const league = this.getAttribute('league');
+        const teamId = card.getAttribute('data-team-id');
 
         // Dispatch custom event for team selection
         const event = new CustomEvent('team-selected', {
@@ -155,7 +156,8 @@ class TeamsTab extends HTMLElement {
           composed: true,
           detail: {
             teamName,
-            league
+            league,
+            teamId
           }
         });
         this.dispatchEvent(event);
@@ -279,6 +281,20 @@ class TeamsTab extends HTMLElement {
 
     // Re-render with filtered data
     this.renderTeamsList();
+  }
+
+  handleTeamClick(team) {
+    // Dispatch event with both teamName and teamId
+    const event = new CustomEvent('team-selected', {
+      bubbles: true,
+      composed: true,
+      detail: {
+        league: this.getAttribute('league'),
+        teamName: team.name,
+        teamId: team.id || team.teamId // Use whichever property exists in your data
+      }
+    });
+    this.dispatchEvent(event);
   }
 
   changePage(page) {
@@ -1048,21 +1064,24 @@ class TeamsTab extends HTMLElement {
           
           <div class="team-grid">
             ${currentTeams.length > 0 ? currentTeams.map(team => {
-      // Determine logo content
-      let logoContent;
-      if (team.img && team.img.includes('<svg')) {
-        // If it's SVG content
-        logoContent = team.img;
-      } else if (team.img) {
-        // If it's an image URL
-        logoContent = `<img src="${team.img}" alt="${team.name}" onerror="this.src='https://raw.githubusercontent.com/widbuntu/vbdb-info/refs/heads/main/assets/favicon.svg'; this.onerror=null;">`;
-      } else {
-        // If no image is available
-        logoContent = `<div class="placeholder-logo">${this.getFirstLetterPlaceholder(team.name)}</div>`;
-      }
+              // Determine logo content
+              let logoContent;
+              if (team.img && team.img.includes('<svg')) {
+                // If it's SVG content
+                logoContent = team.img;
+              } else if (team.img) {
+                // If it's an image URL
+                logoContent = `<img src="${team.img}" alt="${team.name}" onerror="this.src='https://raw.githubusercontent.com/widbuntu/vbdb-info/refs/heads/main/assets/favicon.svg'; this.onerror=null;">`;
+              } else {
+                // If no image is available
+                logoContent = `<div class="placeholder-logo">${this.getFirstLetterPlaceholder(team.name)}</div>`;
+              }
 
-      return `
-                <div class="team-card" data-url="${team.url || ''}" data-team-id="${team.id || ''}">
+              // Get team ID - check multiple possible properties
+              const teamId = team.team_id || team.id || team.teamId || '';
+
+              return `
+                <div class="team-card" data-url="${team.url || ''}" data-team-id="${teamId}">
                   <div class="team-logo">
                     ${logoContent}
                   </div>
@@ -1070,12 +1089,13 @@ class TeamsTab extends HTMLElement {
                   <div class="team-info">
                     ${team.conference ? `<p>Conf: ${team.conference}</p>` : ''}
                     ${team.division ? `<p>Div: ${team.division}</p>` : ''}
+                    ${teamId ? `<p class="team-id-display">ID: ${teamId}</p>` : ''}
                   </div>
                   <button class="team-btn">Visit Team</button>
                 </div>
               `;
-    }).join('') :
-        `<div class="no-results">No teams match your search criteria. Try adjusting your filters.</div>`}
+            }).join('') :
+            `<div class="no-results">No teams match your search criteria. Try adjusting your filters.</div>`}
           </div>
           
           <div class="pagination-container" style="${totalPages <= 1 ? 'display: none;' : ''}">
@@ -1089,7 +1109,7 @@ class TeamsTab extends HTMLElement {
             </nav>
           </div>
         </div>
-      `;
+              `;
 
     // Setup event listeners
     this.setupEventListeners();

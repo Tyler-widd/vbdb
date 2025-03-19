@@ -6,7 +6,7 @@ class TeamDetail extends HTMLElement {
   }
 
   static get observedAttributes() {
-    return ['level', 'team-name'];
+    return ['level', 'team-name', 'team-id'];
   }
 
   attributeChangedCallback(name, oldValue, newValue) {
@@ -61,116 +61,164 @@ class TeamDetail extends HTMLElement {
     document.removeEventListener('teams-data-error', this.dataErrorListener);
   }
 
-  // Add this to your TeamDetail class
-// Replace the findTeamData method in your TeamDetail component
-findTeamData() {
-  const teamName = this.getAttribute('team-name');
-  const level = this.getAttribute('level');
-  
-  console.log(`Finding team data for: "${teamName}" in level: "${level}"`);
-  
-  if (!teamName || !level) {
-    console.error("Missing team name or level attribute");
-    return;
-  }
-  
-  if (!window.vbdbData || !window.vbdbData.teamsData) {
-    console.error("No vbdbData available");
-    return;
-  }
-  
-  // Log available levels
-  const availableLevels = Object.keys(window.vbdbData.teamsData);
-  console.log("Available levels in data:", availableLevels);
-  
-  // Try different casing/formats of the level name
-  const levelVariants = [
-    level,
-    level.toUpperCase(),
-    level.toLowerCase(),
-    level.split(' ').map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()).join(' ')
-  ];
-  
-  // Try to find teams using any of the level variants
-  let teams = null;
-  let usedLevel = null;
-  
-  for (const levelVariant of levelVariants) {
-    if (window.vbdbData.teamsData[levelVariant] && window.vbdbData.teamsData[levelVariant].length > 0) {
-      console.log(`Found teams using level key: "${levelVariant}"`);
-      teams = window.vbdbData.teamsData[levelVariant];
-      usedLevel = levelVariant;
-      break;
-    }
-  }
-  
-  if (!teams || teams.length === 0) {
-    console.error(`No teams found for any variant of level "${level}". Available levels:`, availableLevels);
+  // Updated findTeamData method that prioritizes team-id
+  findTeamData() {
+    const teamName = this.getAttribute('team-name');
+    const teamId = this.getAttribute('team-id');
+    const level = this.getAttribute('level');
     
-    // Desperate attempt - look across all teams for this specific team name
-    const allTeams = [];
-    for (const key of availableLevels) {
-      if (Array.isArray(window.vbdbData.teamsData[key])) {
-        allTeams.push(...window.vbdbData.teamsData[key]);
+    console.log(`Finding team data for: ID="${teamId}", name="${teamName}" in level: "${level}"`);
+    
+    if (!level) {
+      console.error("Missing level attribute");
+      return;
+    }
+    
+    if (!teamId && !teamName) {
+      console.error("Missing both team-id and team-name attributes");
+      return;
+    }
+    
+    if (!window.vbdbData || !window.vbdbData.teamsData) {
+      console.error("No vbdbData available");
+      return;
+    }
+    
+    // Log available levels
+    const availableLevels = Object.keys(window.vbdbData.teamsData);
+    console.log("Available levels in data:", availableLevels);
+    
+    // Try different casing/formats of the level name
+    const levelVariants = [
+      level,
+      level.toUpperCase(),
+      level.toLowerCase(),
+      level.split(' ').map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()).join(' ')
+    ];
+    
+    // Try to find teams using any of the level variants
+    let teams = null;
+    let usedLevel = null;
+    
+    for (const levelVariant of levelVariants) {
+      if (window.vbdbData.teamsData[levelVariant] && window.vbdbData.teamsData[levelVariant].length > 0) {
+        console.log(`Found teams using level key: "${levelVariant}"`);
+        teams = window.vbdbData.teamsData[levelVariant];
+        usedLevel = levelVariant;
+        break;
       }
     }
     
-    this.teamData = allTeams.find(team => 
-      team.name === teamName || 
-      team.name.toLowerCase() === teamName.toLowerCase()
-    );
-    
-    if (this.teamData) {
-      console.log(`Found team "${this.teamData.name}" in a different level: ${this.teamData.level || 'unknown'}`);
-    } else {
-      console.error(`Team "${teamName}" not found in any level.`);
+    if (!teams || teams.length === 0) {
+      console.error(`No teams found for any variant of level "${level}". Available levels:`, availableLevels);
+      
+      // Search across all teams
+      const allTeams = [];
+      for (const key of availableLevels) {
+        if (Array.isArray(window.vbdbData.teamsData[key])) {
+          allTeams.push(...window.vbdbData.teamsData[key]);
+        }
+      }
+      
+      // First try by ID if we have it
+      if (teamId) {
+        this.teamData = allTeams.find(team => 
+          team.id === teamId || 
+          team.teamId === teamId ||
+          (team.id && team.id.toString() === teamId) ||
+          (team.teamId && team.teamId.toString() === teamId)
+        );
+        
+        if (this.teamData) {
+          console.log(`Found team "${this.teamData.name}" with ID "${teamId}" in a different level: ${this.teamData.level || this.teamData.league || 'unknown'}`);
+          return;
+        }
+      }
+      
+      // If ID search failed, try by name
+      if (teamName) {
+        this.teamData = allTeams.find(team => 
+          team.name === teamName || 
+          team.name.toLowerCase() === teamName.toLowerCase()
+        );
+        
+        if (this.teamData) {
+          console.log(`Found team "${this.teamData.name}" by name in a different level: ${this.teamData.level || 'unknown'}`);
+          return;
+        }
+      }
+      
+      console.error(`Team not found with ID "${teamId}" or name "${teamName}" in any level.`);
+      return;
     }
-    return;
+    
+    console.log(`Found ${teams.length} teams in level: ${usedLevel}`);
+    
+    // First priority: find by ID if we have it
+    if (teamId) {
+      this.teamData = teams.find(team => 
+        team.id === teamId || 
+        team.teamId === teamId ||
+        (team.id && team.id.toString() === teamId) ||
+        (team.teamId && team.teamId.toString() === teamId)
+      );
+      
+      if (this.teamData) {
+        console.log(`Found team with ID "${teamId}": "${this.teamData.name}"`);
+        return;
+      }
+      console.warn(`Team with ID "${teamId}" not found, falling back to name search`);
+    }
+    
+    // Second priority: find by name
+    if (teamName) {
+      // Try exact match first
+      this.teamData = teams.find(team => team.name === teamName);
+      
+      if (this.teamData) {
+        console.log(`Found team with exact name match: ${this.teamData.name}`);
+        return;
+      }
+      
+      // Try case-insensitive match
+      this.teamData = teams.find(team => 
+        team.name.toLowerCase() === teamName.toLowerCase()
+      );
+      
+      if (this.teamData) {
+        console.log(`Found team with case-insensitive name match: ${this.teamData.name}`);
+        return;
+      }
+      
+      // Try normalized match (removing special chars)
+      const normalizedName = teamName.toLowerCase().replace(/[^a-z0-9]/g, '');
+      this.teamData = teams.find(team => {
+        const normalizedTeamName = team.name.toLowerCase().replace(/[^a-z0-9]/g, '');
+        return normalizedTeamName === normalizedName;
+      });
+      
+      if (this.teamData) {
+        console.log(`Found team with normalized name match: ${this.teamData.name}`);
+        return;
+      }
+    }
+    
+    // Still not found
+    console.error(`Team not found with ID "${teamId}" or name "${teamName}" in ${usedLevel}`);
   }
-  
-  console.log(`Found ${teams.length} teams in level: ${usedLevel}`);
-  
-  // Try exact match first
-  this.teamData = teams.find(team => team.name === teamName);
-  
-  if (this.teamData) {
-    console.log(`Found team with exact match: ${this.teamData.name}`);
-    return;
-  }
-  
-  // Try case-insensitive match
-  this.teamData = teams.find(team => 
-    team.name.toLowerCase() === teamName.toLowerCase()
-  );
-  
-  if (this.teamData) {
-    console.log(`Found team with case-insensitive match: ${this.teamData.name}`);
-    return;
-  }
-  
-  // Try normalized match (removing special chars)
-  const normalizedName = teamName.toLowerCase().replace(/[^a-z0-9]/g, '');
-  this.teamData = teams.find(team => {
-    const normalizedTeamName = team.name.toLowerCase().replace(/[^a-z0-9]/g, '');
-    return normalizedTeamName === normalizedName;
-  });
-  
-  if (this.teamData) {
-    console.log(`Found team with normalized match: ${this.teamData.name}`);
-    return;
-  }
-  
-  // Still not found
-  console.error(`Team "${teamName}" not found in ${usedLevel}. Available teams:`, 
-    teams.map(t => t.name).slice(0, 10)); // Show just first 10 teams to avoid console spam
-}
 
   render() {
     const teamName = this.getAttribute('team-name')?.replace(/-/g, ' ');
+    const teamId = this.getAttribute('team-id');
     const level = this.getAttribute('level');
     
-    if (!teamName || !level) {
-      this.shadowRoot.innerHTML = '<p>Loading team information...</p>';
+    if (!level) {
+      this.shadowRoot.innerHTML = '<p>Error: Missing level attribute</p>';
+      return;
+    }
+    
+    if (!teamId && !teamName) {
+      this.shadowRoot.innerHTML = '<p>Error: Missing both team-id and team-name attributes</p>';
       return;
     }
     
@@ -289,6 +337,13 @@ findTeamData() {
           margin-bottom: 0.5rem;
         }
         
+        .team-id {
+          font-family: monospace;
+          background-color: rgba(0,0,0,0.2);
+          padding: 2px 6px;
+          border-radius: 4px;
+        }
+        
         .team-url {
           color: var(--accent, #5ca5c7);
           text-decoration: none;
@@ -331,7 +386,6 @@ findTeamData() {
       </div>
     `;
   }
-  
 }
 
 customElements.define('team-detail', TeamDetail);
