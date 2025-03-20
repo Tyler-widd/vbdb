@@ -7,12 +7,15 @@
     // Get the full path including search parameters
     var fullPath = window.location.pathname.substring(1) + window.location.search;
     
+    // Store the path in session storage for later retrieval
+    sessionStorage.setItem('redirectPath', fullPath);
+    
     // Use hash-based routing instead of path-based routing
     // This approach works even without server configuration
     window.location.replace('/#/' + fullPath);
   </script>
 </head>
 <body>
-  <p>Redirecting...</p>
+  <p>Redirecting to the correct page...</p>
 </body>
 </html>

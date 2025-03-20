@@ -30,6 +30,9 @@ class ViewManager extends HTMLElement {
       <path d="M124.485 7.38385C123.622 7.38385 122.92 6.68225 122.92 5.81988C122.92 4.95758 123.622 4.25598 124.485 4.25598C125.348 4.25598 126.05 4.95758 126.05 5.81988C126.05 6.68225 125.348 7.38385 124.485 7.38385ZM124.485 3.87621C123.412 3.87621 122.54 4.74814 122.54 5.81988C122.54 6.89163 123.412 7.76355 124.485 7.76355C125.557 7.76355 126.43 6.89163 126.43 5.81988C126.43 4.74814 125.557 3.87621 124.485 3.87621Z"></path>
     </svg>
     `;
+    
+    // Track active tab components to manage state
+    this.activeTabComponents = {};
   }
 
   connectedCallback() {
@@ -49,7 +52,7 @@ class ViewManager extends HTMLElement {
       if (event.state) {
         if (event.state.teamName) {
           // Team detail view
-          this.showTeamDetail(event.state.league, event.state.teamName, false);
+          this.showTeamDetail(event.state.league, event.state.teamName, event.state.teamId, false);
         } else if (event.state.league) {
           // League view
           this.showLeagueContent(event.state.league, event.state.tab || 'overview', false);
@@ -143,223 +146,6 @@ class ViewManager extends HTMLElement {
     checkData();
   }
 
-  waitForDataToLoad(callback, maxWaitTime = 10000) {
-    console.log("Waiting for data to load...");
-    
-    // Track start time to avoid infinite waiting
-    const startTime = Date.now();
-    
-    // Function to check if data is available
-    const checkData = () => {
-      // Check if data is loaded
-      if (window.vbdbData && window.vbdbData.teamsData) {
-        // Check if NCAA Men data is available
-        const ncaaMenTeams = window.vbdbData.teamsData["NCAA Men"];
-        if (ncaaMenTeams && ncaaMenTeams.length > 0) {
-          console.log(`Data loaded successfully. Found ${ncaaMenTeams.length} teams in NCAA Men.`);
-          callback();
-          return;
-        }
-      }
-      
-      // Check if we've waited too long
-      if (Date.now() - startTime > maxWaitTime) {
-        console.error("Timed out waiting for data to load.");
-        // Try to proceed anyway
-        callback();
-        return;
-      }
-      
-      // Try again after a delay
-      setTimeout(checkData, 100);
-    };
-    
-    // Start checking
-    checkData();
-  }
-
-  findTeamInData(level, teamName) {
-    console.log(`Searching for team "${teamName}" in level "${level}"...`);
-    
-    if (!window.vbdbData || !window.vbdbData.teamsData) {
-      console.error("No data available - vbdbData or teamsData is undefined");
-      return null;
-    }
-    
-    // Log all available keys for debugging
-    const availableLevels = Object.keys(window.vbdbData.teamsData);
-    console.log("Available levels in data:", availableLevels);
-    
-    // Try different casing/formats of the level name
-    const levelVariants = [
-      level,
-      level.toUpperCase(),
-      level.toLowerCase(),
-      level.split(' ').map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()).join(' ')
-    ];
-    
-    // Try to find teams using any of the level variants
-    let teams = null;
-    for (const levelVariant of levelVariants) {
-      if (window.vbdbData.teamsData[levelVariant] && window.vbdbData.teamsData[levelVariant].length > 0) {
-        console.log(`Found teams using level key: "${levelVariant}"`);
-        teams = window.vbdbData.teamsData[levelVariant];
-        break;
-      }
-    }
-    
-    // If still no teams found, try looking at each team's level property
-    if (!teams || teams.length === 0) {
-      console.log("Trying to find teams by their individual level property...");
-      
-      // Get all teams from all levels
-      const allTeams = [];
-      for (const levelKey of availableLevels) {
-        if (Array.isArray(window.vbdbData.teamsData[levelKey])) {
-          allTeams.push(...window.vbdbData.teamsData[levelKey]);
-        }
-      }
-      
-      // Filter by level property (trying different formats)
-      for (const levelVariant of levelVariants) {
-        const matchingTeams = allTeams.filter(team => 
-          team.level === levelVariant || 
-          team.league === levelVariant ||
-          team.conference === levelVariant
-        );
-        
-        if (matchingTeams.length > 0) {
-          console.log(`Found ${matchingTeams.length} teams with level/league/conference property: "${levelVariant}"`);
-          teams = matchingTeams;
-          break;
-        }
-      }
-    }
-    
-    // If still no teams found
-    if (!teams || teams.length === 0) {
-      // Last desperate attempt - just get all teams and see if we can find our team by name
-      console.log("No teams found by level. Trying to find team by name across all data...");
-      
-      const allTeams = [];
-      for (const levelKey of availableLevels) {
-        if (Array.isArray(window.vbdbData.teamsData[levelKey])) {
-          allTeams.push(...window.vbdbData.teamsData[levelKey]);
-        }
-      }
-      
-      const nameMatch = allTeams.find(team => 
-        team.name === teamName || 
-        team.name.toLowerCase() === teamName.toLowerCase()
-      );
-      
-      if (nameMatch) {
-        console.log(`Found team "${nameMatch.name}" in a different level: ${nameMatch.level || nameMatch.league || 'unknown'}`);
-        return nameMatch;
-      }
-      
-      console.error(`No teams found for level: "${level}" and no team matches name: "${teamName}"`);
-      return null;
-    }
-    
-    console.log(`Found ${teams.length} teams for search`);
-    
-    // Try to find the team by name
-    // 1. Exact match
-    let match = teams.find(team => team.name === teamName);
-    
-    if (match) {
-      console.log(`Found exact match for "${teamName}"`);
-      return match;
-    }
-    
-    // 2. Case-insensitive match
-    match = teams.find(team => 
-      team.name.toLowerCase() === teamName.toLowerCase()
-    );
-    
-    if (match) {
-      console.log(`Found case-insensitive match for "${teamName}": "${match.name}"`);
-      return match;
-    }
-    
-    // 3. Normalized match (remove special chars, spaces)
-    const normalized = teamName.toLowerCase().replace(/[^a-z0-9]/g, '');
-    match = teams.find(team => 
-      team.name.toLowerCase().replace(/[^a-z0-9]/g, '') === normalized
-    );
-    
-    if (match) {
-      console.log(`Found normalized match for "${teamName}": "${match.name}"`);
-      return match;
-    }
-    
-    // Not found - log first few team names for debugging
-    console.error(`Team "${teamName}" not found. Sample of available teams:`, 
-      teams.slice(0, 5).map(t => t.name));
-    
-    return null;
-  }
-
-  debugDataStructure() {
-    console.log("--------- TeamDetail Debug Data Structure ---------");
-    const teamName = this.getAttribute('team-name');
-    const level = this.getAttribute('level');
-    
-    console.log(`Looking for team: "${teamName}" in level: "${level}"`);
-    
-    if (!window.vbdbData) {
-      console.error("window.vbdbData is undefined");
-      return;
-    }
-    
-    if (!window.vbdbData.teamsData) {
-      console.error("window.vbdbData.teamsData is undefined");
-      return;
-    }
-    
-    // Log available levels
-    console.log("Available levels:", Object.keys(window.vbdbData.teamsData));
-    
-    // Check if level exists in data
-    const levelTeams = window.vbdbData.teamsData[level];
-    if (!levelTeams) {
-      console.error(`Level "${level}" not found in data`);
-      return;
-    }
-    
-    console.log(`Level "${level}" has ${levelTeams.length} teams`);
-    
-    // List first few teams to verify structure
-    console.log("Sample teams:", levelTeams.slice(0, 3));
-    
-    // Try to find the team
-    const exactMatch = levelTeams.find(team => team.name === teamName);
-    if (exactMatch) {
-      console.log("Found exact match:", exactMatch);
-      return;
-    }
-    
-    // Try case-insensitive
-    const caseInsensitiveMatch = levelTeams.find(
-      team => team.name.toLowerCase() === teamName.toLowerCase()
-    );
-    if (caseInsensitiveMatch) {
-      console.log("Found case-insensitive match:", caseInsensitiveMatch);
-      return;
-    }
-    
-    console.error(`Team "${teamName}" not found in level "${level}"`);
-  }
-
-  // Add this helper function to your ViewManager class
-  toTitleCase(str) {
-    // Convert from kebab-case or space-separated lowercase to Title Case
-    return str.split(/[-\s]+/).map(word =>
-      word.charAt(0).toUpperCase() + word.slice(1)
-    ).join(' ');
-  }
-
   handlePathRoute(path) {
     console.log("Handling route path:", path);
   
@@ -435,6 +221,8 @@ class ViewManager extends HTMLElement {
 
   handleLeagueSelected(event) {
     const league = event.detail.level;
+    // Clear any active tab components when changing leagues
+    this.activeTabComponents = {};
     this.showLeagueContent(league, 'teams', true); // Show teams tab by default
   }
 
@@ -460,7 +248,6 @@ class ViewManager extends HTMLElement {
     this.showTeamDetail(level, teamName, teamId, true);
   }
 
-  // Add this to the showTeamDetail method in ViewManager
   showTeamDetail(level, teamName, teamId, updateHistory = true) {
     console.log(`showTeamDetail called with level: "${level}", teamName: "${teamName}", teamId: "${teamId}"`);
     
@@ -496,6 +283,13 @@ class ViewManager extends HTMLElement {
   }
 
   showLeagueContent(league, tab = 'overview', updateHistory = true) {
+    // Check if we're changing leagues
+    const isLeagueChange = this.activeLeague !== league;
+    if (isLeagueChange) {
+      // Clear active tab components when changing leagues
+      this.activeTabComponents = {};
+    }
+    
     this.activeLeague = league;
     this.activeTab = tab;
     this.activeTeam = null; // Reset active team
@@ -548,6 +342,9 @@ class ViewManager extends HTMLElement {
       document.body.style.overflow = ''; // Restore scrolling
       this.activeLeague = null;
       this.activeTeam = null;
+      
+      // Clear active tab components when returning to home
+      this.activeTabComponents = {};
     }, 300);
   }
 
@@ -593,8 +390,8 @@ class ViewManager extends HTMLElement {
     this.activeTab = tab;
 
     // Update URL
-    const url = `/${this.activeLeague.toLowerCase().replace(/\s+/g, '-')}/${tab}`;
-    window.history.pushState({ league: this.activeLeague, tab }, `${this.activeLeague} - ${tab.charAt(0).toUpperCase() + tab.slice(1)}`, url);
+    const hashUrl = `#/${this.activeLeague.toLowerCase().replace(/\s+/g, '-')}/${tab}`;
+    window.history.pushState({ league: this.activeLeague, tab }, `${this.activeLeague} - ${tab.charAt(0).toUpperCase() + tab.slice(1)}`, hashUrl);
 
     // Update tab highlight
     const tabLinks = this.shadowRoot.querySelectorAll('.league-nav a');
@@ -613,9 +410,13 @@ class ViewManager extends HTMLElement {
         content.style.display = 'block';
 
         // Initialize the component with the league attribute if needed
-        const tabComponent = content.querySelector(`${tab}-tab`);
-        if (tabComponent && !tabComponent.hasAttribute('league')) {
-          tabComponent.setAttribute('league', this.activeLeague);
+        if (!this.activeTabComponents[tab]) {
+          const tabComponent = content.querySelector(`${tab}-tab`);
+          if (tabComponent) {
+            // Force component recreation when switching to this tab
+            tabComponent.setAttribute('league', this.activeLeague);
+            this.activeTabComponents[tab] = true;
+          }
         }
       } else {
         content.style.display = 'none';
@@ -623,7 +424,34 @@ class ViewManager extends HTMLElement {
     });
   }
 
+  initializeTabComponents(league, activeTab) {
+    // Set the league attribute on the active tab component
+    const tabContent = this.shadowRoot.querySelector(`.tab-content[data-tab="${activeTab}"]`);
+    if (tabContent) {
+      const tabComponent = tabContent.querySelector(`${activeTab}-tab`);
+      if (tabComponent) {
+        // First, remove the old component to ensure full reset
+        const parent = tabComponent.parentElement;
+        const oldComponent = tabComponent;
+        
+        // Create a fresh component
+        const newComponent = document.createElement(`${activeTab}-tab`);
+        newComponent.setAttribute('league', league);
+        
+        // Replace the old component with the new one
+        if (parent && oldComponent) {
+          parent.replaceChild(newComponent, oldComponent);
+        }
+        
+        // Mark this tab as initialized
+        this.activeTabComponents[activeTab] = true;
+      }
+    }
+  }
+
+  // Additional methods for finding teams, rendering components, etc.
   findTeamById(level, teamId) {
+    // [existing implementation]
     console.log(`Searching for team with ID "${teamId}" in level "${level}"...`);
     
     if (!window.vbdbData || !window.vbdbData.teamsData) {
@@ -698,17 +526,6 @@ class ViewManager extends HTMLElement {
     
     console.error(`Team with ID "${teamId}" not found`);
     return null;
-  }
-
-  initializeTabComponents(league, activeTab) {
-    // Set the league attribute on the active tab component
-    const tabContent = this.shadowRoot.querySelector(`.tab-content[data-tab="${activeTab}"]`);
-    if (tabContent) {
-      const tabComponent = tabContent.querySelector(`${activeTab}-tab`);
-      if (tabComponent) {
-        tabComponent.setAttribute('league', league);
-      }
-    }
   }
 
   getLeagueIconHTML(league) {
@@ -804,6 +621,9 @@ class ViewManager extends HTMLElement {
   getLeagueContentHTML(league, activeTab = 'overview') {
     const iconHTML = this.getLeagueIconHTML(league);
 
+    // Generate a unique identifier to help force component refresh
+    const timestamp = Date.now();
+
     return `
       <div class="league-header">
         <button class="back-button">
@@ -829,27 +649,27 @@ class ViewManager extends HTMLElement {
         <div class="tab-content-container">
           <!-- Overview Tab -->
           <div class="tab-content" data-tab="overview" style="display: ${activeTab === 'overview' ? 'block' : 'none'}">
-            <overview-tab league="${league}"></overview-tab>
+            <overview-tab league="${league}" data-timestamp="${timestamp}"></overview-tab>
           </div>
           
           <!-- Teams Tab -->
           <div class="tab-content" data-tab="teams" style="display: ${activeTab === 'teams' ? 'block' : 'none'}">
-            <teams-tab league="${league}"></teams-tab>
+            <teams-tab league="${league}" data-timestamp="${timestamp}"></teams-tab>
           </div>
           
           <!-- Players Tab -->
           <div class="tab-content" data-tab="players" style="display: ${activeTab === 'players' ? 'block' : 'none'}">
-            <players-tab league="${league}"></players-tab>
+            <players-tab league="${league}" data-timestamp="${timestamp}"></players-tab>
           </div>
           
           <!-- Standings Tab -->
           <div class="tab-content" data-tab="standings" style="display: ${activeTab === 'standings' ? 'block' : 'none'}">
-            <standings-tab league="${league}"></standings-tab>
+            <standings-tab league="${league}" data-timestamp="${timestamp}"></standings-tab>
           </div>
           
           <!-- Schedule Tab -->
           <div class="tab-content" data-tab="schedule" style="display: ${activeTab === 'schedule' ? 'block' : 'none'}">
-            <schedule-tab league="${league}"></schedule-tab>
+            <schedule-tab league="${league}" data-timestamp="${timestamp}"></schedule-tab>
           </div>
         </div>
       </div>

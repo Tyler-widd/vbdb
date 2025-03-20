@@ -1051,11 +1051,13 @@ class TeamsTab extends HTMLElement {
           <h1>${league} Teams</h1>
           
           <div class="filter-container">
+          
             <div class="search-box">
+            
               <input type="text" class="team-search" placeholder="Search teams...">
-              <div class="search-icon"></div>
               <div class="loading-icon"></div>
             </div>
+            
             <select class="division-filter">
               <option value="all">All Divisions</option>
               ${this.getDivisionFilterOptions(data[league])}
