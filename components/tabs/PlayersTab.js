@@ -256,12 +256,11 @@ class PlayersTab extends HTMLElement {
         visiblePlayers.forEach(player => {
           const row = document.createElement('tr');
           row.innerHTML = `
-            <td class="text-center jersey-col">${player.jersey || '-'}</td>
             <td class="name-col">
               <div class="player-name">
                 ${player.profile_url ? 
                   `<a href="${player.profile_url}" target="_blank" class="player-link" title="View ${player.name}'s profile">
-                    ${player.name}
+                    ${player.jersey} - ${player.name}
                   </a>` : 
                   player.name
                 }
@@ -269,8 +268,9 @@ class PlayersTab extends HTMLElement {
             </td>
             <td class="position-col">${player.position || '-'}</td>
             <td class="height-col">${player.height || '-'}</td>
+            <td class="year-col">${player.class_year || '-'}</td>
             <td class="hometown-col hide-mobile">${player.hometown || '-'}</td>
-            <td class="team-col">${this.formatTeamName(player.team_id)}</td>
+            <td class="team-col">${this.formatTeamName(player.team_short)}</td>
           `;
           tableBody.appendChild(row);
         });
@@ -472,34 +472,34 @@ color: var(--text, #e0e0e0);
         }
         
         /* Fixed column widths */
-        .jersey-col {
-          width: 50px;
-        }
-        
         .name-col {
           width: 50%;
         }
         
         .position-col {
-          width: 50px;
+          width: 5%;
+        }
+        
+        .year-col {
+          width: 5%;
         }
         
         .height-col {
-          width: 50px;
+          width: 5%;
         }
         
         .hometown-col {
-          width: 20%;
+          width: 15%;
         }
         
         .team-col {
-          width: 200px;
+          width: 15%;
         }
         
         th {
           background-color: rgba(0, 0, 0, 0.2);
           font-weight: 600;
-          color: var(--accent, #5ca5c7);
+          color: var(--text-secondary, #5ca5c7);
           position: relative;
         }
         
@@ -515,7 +515,6 @@ color: var(--text, #e0e0e0);
         th.sort-asc::after {
           content: '▲';
           display: inline-block;
-          margin-left: 5px;
           font-size: 0.7rem;
           vertical-align: middle;
         }
@@ -544,7 +543,7 @@ color: var(--text, #e0e0e0);
         
         /* Player link styling */
         .player-link {
-          color: var(--accent, #5ca5c7);
+          color: var(--link-color);
           text-decoration: none;
           transition: color 0.2s, text-decoration 0.2s;
         }
@@ -729,10 +728,10 @@ color: var(--text, #e0e0e0);
           <table>
             <thead>
               <tr>
-                <th class="text-center sortable jersey-col" data-column="jersey">#</th>
                 <th class="sortable name-col" data-column="name">Name</th>
                 <th class="sortable position-col" data-column="position">Pos</th>
                 <th class="sortable height-col" data-column="height">Hgt</th>
+                <th class="sortable year-col" data-column="height">Yr</th>
                 <th class="sortable hometown-col hide-mobile" data-column="hometown">Hometown</th>
                 <th class="sortable team-col" data-column="team_id">Team</th>
               </tr>

@@ -6,6 +6,7 @@
     --accent-hover: #7577cd;
     --text: #e0e0e0;
     --text-secondary: #aaaaaa;
+    --link-color: #4bb7d8; 
     --card-bg: #1e1e1e;
 }
 
@@ -20,7 +21,7 @@ body {
 
 /* Hero Section Styling */
 .hero-section {
-    padding: 5rem 0;
+    padding: 2rem 0;
     text-align: center;
     background: linear-gradient(135deg, #1a1a1a 0%, #0d0d0d 100%);
     margin-bottom: 3rem;

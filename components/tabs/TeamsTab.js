@@ -8,6 +8,58 @@ class TeamsTab extends HTMLElement {
     this.filteredTeams = [];
     this.searchDebounceTimer = null;
     this.isSearching = false;
+    
+    function handleTeamClick(team, league) {
+      const teamId = getTeamId(team);
+      
+      // Dispatch event with both teamName and teamId
+      const event = new CustomEvent('team-selected', {
+        bubbles: true,
+        composed: true,
+        detail: {
+          league: league,
+          teamName: team.name,
+          teamId: teamId
+        }
+      });
+      this.dispatchEvent(event);
+    }
+    
+    const getTeamId = (team) => {
+      return team.team_id || team.id || `${team.level}-${team.name.replace(/\s+/g, '-').toLowerCase()}`;
+    };
+    
+    const createTeamCard = (team, index, league) => {
+      // Determine team ID - prioritize numeric/actual IDs over generated ones
+      const teamId = getTeamId(team);
+      
+      // Determine logo content
+      let logoContent;
+      if (team.img && team.img.includes('<svg')) {
+        // If it's SVG content
+        logoContent = team.img;
+      } else if (team.img) {
+        // If it's an image URL
+        logoContent = `<img src="${team.img}" alt="${team.name}" onerror="this.src='https://raw.githubusercontent.com/widbuntu/vbdb-info/refs/heads/main/assets/favicon.svg'; this.onerror=null;">`;
+      } else {
+        // If no image is available
+        logoContent = `<div class="placeholder-logo">${getFirstLetterPlaceholder(team.name)}</div>`;
+      }
+    
+      return `
+        <div class="team-card" data-url="${team.url || ''}" data-team-id="${teamId}">
+          <div class="team-logo">
+            ${logoContent}
+          </div>
+          <h3 class="team-name">${team.name}</h3>
+          <div class="team-info">
+            ${team.conference ? `<p>Conf: ${team.conference}</p>` : ''}
+            ${team.division ? `<p>Div: ${team.division}</p>` : ''}
+          </div>
+          <button class="team-btn">Visit Team</button>
+        </div>
+      `;
+    };
 
     // Add resize listener
     window.addEventListener('resize', this.handleResize.bind(this));
@@ -67,27 +119,27 @@ class TeamsTab extends HTMLElement {
 
   renderError(message) {
     this.shadowRoot.innerHTML = `
-        <style>
-          :host {
-            display: block;
-            width: 100%;
-          }
-          
-          .error {
-            background-color: #2a2a2a;
-            color: #e74c3c;
-            padding: 1rem;
-            border-radius: 8px;
-            text-align: center;
-            margin: 2rem auto;
-            max-width: 500px;
-          }
-        </style>
+      <style>
+        :host {
+          display: block;
+          width: 100%;
+        }
         
-        <div class="error">
-          <p>${message}</p>
-        </div>
-      `;
+        .error {
+          background-color: #2a2a2a;
+          color: #e74c3c;
+          padding: 1rem;
+          border-radius: 8px;
+          text-align: center;
+          margin: 2rem auto;
+          max-width: 500px;
+        }
+      </style>
+      
+      <div class="error">
+        <p>${message}</p>
+      </div>
+    `;
   }
 
   setupEventListeners() {
@@ -101,6 +153,12 @@ class TeamsTab extends HTMLElement {
     const divisionFilter = this.shadowRoot.querySelector('.division-filter');
     if (divisionFilter) {
       divisionFilter.addEventListener('change', this.handleDivisionFilter.bind(this));
+    }
+
+    // Conference filter
+    const conferenceFilter = this.shadowRoot.querySelector('.conference-filter');
+    if (conferenceFilter) {
+      conferenceFilter.addEventListener('change', this.handleConferenceFilter.bind(this));
     }
 
     // Pagination buttons
@@ -134,23 +192,34 @@ class TeamsTab extends HTMLElement {
           link.getAttribute('data-page')) {
           link.addEventListener('click', (e) => {
             e.preventDefault();
-            const page = e.target.getAttribute('data-page');
+            const page = parseInt(e.target.getAttribute('data-page'));
             this.changePage(page);
           });
         }
       });
     }
 
-    // Team card click for opening team info page
+    // Setup the team card listeners
+    this.setupTeamCardListeners();
+  }
+
+  // Separated team card event handling
+  setupTeamCardListeners() {
     const teamCards = this.shadowRoot.querySelectorAll('.team-card');
+    
     teamCards.forEach(card => {
-      card.addEventListener('click', () => {
-        // Get team information
+      card.addEventListener('click', (e) => {
+        if (e.target.classList.contains('team-btn')) return;
+        
         const teamName = card.querySelector('.team-name').textContent;
         const league = this.getAttribute('league');
         const teamId = card.getAttribute('data-team-id');
-
-        // Dispatch custom event for team selection
+        
+        if (!teamId) {
+          console.error(`Missing team ID for ${teamName} in ${league}`);
+          return;
+        }
+        
         const event = new CustomEvent('team-selected', {
           bubbles: true,
           composed: true,
@@ -163,13 +232,14 @@ class TeamsTab extends HTMLElement {
         this.dispatchEvent(event);
       });
     });
-
-    // Visit team button separate click handler
+    
+    // Visit team button click handler
     const teamButtons = this.shadowRoot.querySelectorAll('.team-btn');
     teamButtons.forEach(btn => {
       btn.addEventListener('click', (e) => {
-        e.stopPropagation(); // Prevent card click
-        const url = btn.closest('.team-card').getAttribute('data-url');
+        e.stopPropagation();
+        const card = btn.closest('.team-card');
+        const url = card.getAttribute('data-url');
         if (url) {
           let fullUrl = url;
           if (!fullUrl.startsWith('http')) {
@@ -200,10 +270,11 @@ class TeamsTab extends HTMLElement {
       const searchTerm = searchValue.toLowerCase();
       this.currentPage = 1; // Reset to first page when searching
 
-      // Safely get division filter value
+      // Safely get filter values
       const divisionFilter = this.shadowRoot.querySelector('.division-filter')?.value || 'all';
+      const conferenceFilter = this.shadowRoot.querySelector('.conference-filter')?.value || 'all';
 
-      this.applyFilters(searchTerm, divisionFilter);
+      this.applyFilters(searchTerm, divisionFilter, conferenceFilter);
       this.setSearchingState(false);
     }, 300); // 300ms delay for better performance
   }
@@ -221,21 +292,88 @@ class TeamsTab extends HTMLElement {
     }
   }
 
+  // Update handleDivisionFilter to update conference options dynamically
   handleDivisionFilter(e) {
     // Show loading indicator
     this.setSearchingState(true);
 
     const divisionValue = e.target.value;
     this.currentPage = 1; // Reset to first page when filtering
+    
+    // Update the conference filter dropdown based on the selected division
+    this.updateConferenceOptions(divisionValue);
 
+    // Get the new conference filter value (may have changed if options were updated)
+    const conferenceFilter = this.shadowRoot.querySelector('.conference-filter')?.value || 'all';
+    
     // Add small delay to show the loading state
     setTimeout(() => {
-      this.applyFilters(this.shadowRoot.querySelector('.team-search')?.value.toLowerCase(), divisionValue);
+      this.applyFilters(
+        this.shadowRoot.querySelector('.team-search')?.value.toLowerCase(), 
+        divisionValue,
+        conferenceFilter
+      );
       this.setSearchingState(false);
     }, 50);
   }
 
-  applyFilters(searchTerm = '', divisionFilter = 'all') {
+  // Add new method to update conference options based on selected division
+  updateConferenceOptions(divisionValue) {
+    const league = this.getAttribute('league');
+    const data = this.loadedData || window.vbdbData?.teamsData;
+    const conferenceFilter = this.shadowRoot.querySelector('.conference-filter');
+    
+    if (!data || !data[league] || !conferenceFilter) return;
+    
+    // Save current selection if possible
+    const currentValue = conferenceFilter.value;
+    
+    // Get all teams from the selected division
+    const allTeams = data[league] || [];
+    const divisionTeams = divisionValue === 'all' 
+      ? allTeams 
+      : allTeams.filter(team => team.division === divisionValue);
+    
+    // Generate new options
+    const conferenceOptions = this.getConferenceFilterOptions(divisionTeams);
+    
+    // Update the dropdown
+    conferenceFilter.innerHTML = `
+      <option value="all">All Conferences</option>
+      ${conferenceOptions}
+    `;
+    
+    // Try to restore previous selection if it still exists
+    if (currentValue !== 'all') {
+      // Check if the option still exists
+      const optionExists = Array.from(conferenceFilter.options).some(option => option.value === currentValue);
+      if (optionExists) {
+        conferenceFilter.value = currentValue;
+      }
+    }
+  }
+
+  handleConferenceFilter(e) {
+    // Show loading indicator
+    this.setSearchingState(true);
+
+    const conferenceValue = e.target.value;
+    const divisionValue = this.shadowRoot.querySelector('.division-filter')?.value || 'all';
+    this.currentPage = 1; // Reset to first page when filtering
+
+    // Add small delay to show the loading state
+    setTimeout(() => {
+      this.applyFilters(
+        this.shadowRoot.querySelector('.team-search')?.value.toLowerCase(), 
+        divisionValue,
+        conferenceValue
+      );
+      this.setSearchingState(false);
+    }, 50);
+  }
+
+  // Update the applyFilters method to handle conference filtering correctly
+  applyFilters(searchTerm = '', divisionFilter = 'all', conferenceFilter = 'all') {
     const league = this.getAttribute('league');
     const data = this.loadedData || window.vbdbData?.teamsData;
 
@@ -250,8 +388,8 @@ class TeamsTab extends HTMLElement {
     // Make sure searchTerm is a string even if undefined
     searchTerm = searchTerm || '';
 
-    // Apply filters - optimized to avoid unnecessary work
-    if (searchTerm === '' && divisionFilter === 'all') {
+    // Apply filters
+    if (searchTerm === '' && divisionFilter === 'all' && conferenceFilter === 'all') {
       // No filters applied, use all teams
       this.filteredTeams = allTeams;
     } else {
@@ -274,27 +412,17 @@ class TeamsTab extends HTMLElement {
 
         // Check division
         const matchesDivision = divisionFilter === 'all' || team.division === divisionFilter;
+        
+        // Check conference - use team.conference
+        const matchesConference = conferenceFilter === 'all' || 
+                                (team.conference && team.conference === conferenceFilter);
 
-        return matchesSearch && matchesDivision;
+        return matchesSearch && matchesDivision && matchesConference;
       });
     }
 
     // Re-render with filtered data
     this.renderTeamsList();
-  }
-
-  handleTeamClick(team) {
-    // Dispatch event with both teamName and teamId
-    const event = new CustomEvent('team-selected', {
-      bubbles: true,
-      composed: true,
-      detail: {
-        league: this.getAttribute('league'),
-        teamName: team.name,
-        teamId: team.id || team.teamId // Use whichever property exists in your data
-      }
-    });
-    this.dispatchEvent(event);
   }
 
   changePage(page) {
@@ -318,48 +446,68 @@ class TeamsTab extends HTMLElement {
   }
 
   getDivisionFilterOptions(teams) {
-    const divisions = [...new Set(teams.filter(team => team.division).map(team => team.division))];
+    const divisions = [...new Set(teams.filter(team => team.division).map(team => team.division))].sort();
     return divisions.map(div => `<option value="${div}">${div}</option>`).join('');
+  }
+
+  getConferenceFilterOptions(teams) {
+    // Filter out non-empty conference values and remove duplicates
+    const conferences = [...new Set(
+      teams
+        .filter(team => team.conference)
+        .map(team => team.conference)
+    )].sort();
+    
+    return conferences.map(conf => `<option value="${conf}">${conf}</option>`).join('');
   }
 
   renderTeamsList() {
     const league = this.getAttribute('league');
     const data = this.loadedData || window.vbdbData?.teamsData;
-
+  
     if (!data || !data[league]) return;
-
+  
     const allTeams = data[league] || [];
     const teams = this.filteredTeams.length > 0 ? this.filteredTeams : allTeams;
-
+  
     // Preload team images in the background
     this.preloadTeamImages(teams);
-
+  
     // Calculate pagination
     const totalPages = Math.ceil(teams.length / this.teamsPerPage);
     const startIndex = (this.currentPage - 1) * this.teamsPerPage;
     const endIndex = Math.min(startIndex + this.teamsPerPage, teams.length);
     const currentTeams = teams.slice(startIndex, endIndex);
-
+  
     // Get container and update team grid
     const teamContainer = this.shadowRoot.querySelector('.team-container');
     const teamGrid = this.shadowRoot.querySelector('.team-grid');
     const paginationContainer = this.shadowRoot.querySelector('.pagination-container');
     const pageInfo = this.shadowRoot.querySelector('.page-info');
-
+  
     if (teamGrid) {
       // Clear existing content first
       teamGrid.innerHTML = '';
-
+  
       // Batch DOM updates
       const fragment = document.createDocumentFragment();
-
-      currentTeams.forEach(team => {
+  
+      currentTeams.forEach((team, index) => {
+        // Prioritize numeric ID - use team_id first if it's numeric, otherwise use the array index + 1
+        const numericId = team.team_id && !isNaN(parseInt(team.team_id)) 
+          ? team.team_id 
+          : (startIndex + index + 1).toString();
+        
+        // Fallback ID for data attributes
+        const fallbackId = team.id || team.teamId || `${league}-${team.name.replace(/\s+/g, '-').toLowerCase()}`;
+        
         // Create team card element
         const teamCard = document.createElement('div');
         teamCard.className = 'team-card';
         teamCard.setAttribute('data-url', team.url || '');
-        teamCard.setAttribute('data-team-id', team.id || '');
-
+        teamCard.setAttribute('data-team-id', numericId);  // Use numeric ID
+        teamCard.setAttribute('data-team-fullid', fallbackId);  // Keep full ID as backup
+  
         // Determine logo content
         let logoContent;
         if (team.img && team.img.includes('<svg')) {
@@ -372,7 +520,7 @@ class TeamsTab extends HTMLElement {
           // If no image is available
           logoContent = `<div class="placeholder-logo">${this.getFirstLetterPlaceholder(team.name)}</div>`;
         }
-
+  
         teamCard.innerHTML = `
             <div class="team-logo">
               ${logoContent}
@@ -384,13 +532,13 @@ class TeamsTab extends HTMLElement {
             </div>
             <button class="team-btn">Visit Team</button>
           `;
-
+  
         fragment.appendChild(teamCard);
       });
-
+  
       // Add all cards at once to minimize reflows
       teamGrid.appendChild(fragment);
-
+  
       // Update pagination if needed
       if (paginationContainer) {
         // Create pagination links
@@ -399,10 +547,10 @@ class TeamsTab extends HTMLElement {
         if (paginationElement) {
           paginationElement.innerHTML = pagination;
         }
-
+  
         paginationContainer.style.display = totalPages > 1 ? 'block' : 'none';
       }
-
+  
       // Update page info
       if (pageInfo) {
         const start = startIndex + 1;
@@ -410,10 +558,10 @@ class TeamsTab extends HTMLElement {
         const resultText = this.isSearching
           ? 'Searching...'
           : `Showing ${start} to ${end} of ${teams.length} teams (Page ${this.currentPage} of ${totalPages || 1})`;
-
+  
         pageInfo.textContent = resultText;
       }
-
+  
       // Setup event listeners
       this.setupEventListeners();
     } else {
@@ -585,62 +733,24 @@ class TeamsTab extends HTMLElement {
   render() {
     const league = this.getAttribute('league');
     const data = this.loadedData || window.vbdbData?.teamsData;
-
+  
     // If still loading or no data yet
     if (!data || !data[league] || data[league].length === 0) {
-      this.shadowRoot.innerHTML = `
-          <style>
-            :host {
-              display: block;
-              width: 100%;
-            }
-            
-            .loading {
-              background-color: #2a2a2a;
-              color: var(--text, #e0e0e0);
-              padding: 1rem;
-              border-radius: 8px;
-              text-align: center;
-              margin: 2rem auto;
-              max-width: 500px;
-            }
-            
-            .loading-spinner {
-              display: inline-block;
-              width: 20px;
-              height: 20px;
-              border: 3px solid rgba(255,255,255,0.3);
-              border-radius: 50%;
-              border-top-color: var(--accent, #5ca5c7);
-              animation: spin 1s ease-in-out infinite;
-              margin-right: 10px;
-              vertical-align: middle;
-            }
-            
-            @keyframes spin {
-              to { transform: rotate(360deg); }
-            }
-          </style>
-          <div class="loading">
-            <span class="loading-spinner"></span>
-            Loading team data...
-          </div>
-        `;
+      // Loading state HTML...
       return;
     }
-
+  
     // Initialize filtered teams if not already set
     if (this.filteredTeams.length === 0) {
       this.filteredTeams = data[league] || [];
     }
-
+  
     // Calculate pagination
     const teams = this.filteredTeams;
     const totalPages = Math.ceil(teams.length / this.teamsPerPage);
     const startIndex = (this.currentPage - 1) * this.teamsPerPage;
     const endIndex = Math.min(startIndex + this.teamsPerPage, teams.length);
     const currentTeams = teams.slice(startIndex, endIndex);
-
     this.shadowRoot.innerHTML = `
         <style>
           :host {
@@ -864,7 +974,7 @@ class TeamsTab extends HTMLElement {
             to { transform: translateY(-50%) rotate(360deg); }
           }
           
-          .division-filter {
+          .division-filter, .conference-filter {
             padding: 10px 35px 10px 15px; /* Increased right padding for dropdown arrow */
             border-radius: 5px;
             border: none;
@@ -877,7 +987,7 @@ class TeamsTab extends HTMLElement {
             background-repeat: no-repeat;
             background-position: right 10px center;
           }
-          
+
           /* No results message */
           .no-results {
             grid-column: 1 / -1;
@@ -890,10 +1000,10 @@ class TeamsTab extends HTMLElement {
           
           /* Pagination */
           .pagination-container {
-            background-color: #252525;
-            padding: 1.2rem;
+            background-color: #1e1e1e;
+            padding: 1rem;
             border-radius: 10px;
-            margin-top: 2rem;
+            margin-top: 1rem;
             overflow-x: auto; /* Allow horizontal scrolling on small screens */
           }
           
@@ -916,7 +1026,7 @@ class TeamsTab extends HTMLElement {
           }
           
           .page-item {
-            margin: 0 3px;
+             margin: 0 3px !important;
           }
           
           .page-link {
@@ -1051,9 +1161,7 @@ class TeamsTab extends HTMLElement {
           <h1>${league} Teams</h1>
           
           <div class="filter-container">
-          
             <div class="search-box">
-            
               <input type="text" class="team-search" placeholder="Search teams...">
               <div class="loading-icon"></div>
             </div>
@@ -1061,6 +1169,11 @@ class TeamsTab extends HTMLElement {
             <select class="division-filter">
               <option value="all">All Divisions</option>
               ${this.getDivisionFilterOptions(data[league])}
+            </select>
+
+            <select class="conference-filter">
+              <option value="all">All Conferences</option>
+              ${this.getConferenceFilterOptions(data[league])}
             </select>
           </div>
           
@@ -1079,8 +1192,8 @@ class TeamsTab extends HTMLElement {
                 logoContent = `<div class="placeholder-logo">${this.getFirstLetterPlaceholder(team.name)}</div>`;
               }
 
-              // Get team ID - check multiple possible properties
-              const teamId = team.team_id || team.id || team.teamId || '';
+              // Ensure team has an ID - generate one if not available
+              const teamId = team.id || team.team_id || team.teamId || `${league}-${team.name.replace(/\s+/g, '-').toLowerCase()}`;
 
               return `
                 <div class="team-card" data-url="${team.url || ''}" data-team-id="${teamId}">
@@ -1091,7 +1204,6 @@ class TeamsTab extends HTMLElement {
                   <div class="team-info">
                     ${team.conference ? `<p>Conf: ${team.conference}</p>` : ''}
                     ${team.division ? `<p>Div: ${team.division}</p>` : ''}
-                    ${teamId ? `<p class="team-id-display">ID: ${teamId}</p>` : ''}
                   </div>
                   <button class="team-btn">Visit Team</button>
                 </div>

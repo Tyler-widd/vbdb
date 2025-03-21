@@ -18,58 +18,40 @@ const lovbSvg = `
 </svg>
 `;
 
-// Function to process the data from API
-function processTeamData(data) {
-  const processedData = {
-    'NCAA Women': [],
-    'NCAA Men': [],
-    'LOVB': [],
-    'PVF Pro': []
-  };
-  
-  // Process each team
-  data.forEach((team, index) => {
-    // Skip teams with invalid data
-    if (!team || !team.name) return;
-    
-    let leagueKey = '';
-    
-    // Determine which league this team belongs to
-    if (team.level === 'Pro' && team.conference === 'LOVB') {
-      leagueKey = 'LOVB';
-    } else if (team.level === 'Pro' && team.conference === 'PVF') {
-      leagueKey = 'PVF Pro';
-    } else if (team.level === "NCAA M") {
-      leagueKey = 'NCAA Men';
-    } else if (team.level === "NCAA W") {
-      leagueKey = 'NCAA Women';
-    } else {
-      // Skip teams we can't categorize
-      return;
-    }
-    
-    // Create a unique ID
-    const id = team.team_id || `${leagueKey.toLowerCase().replace(/\s+/g, '-')}-${index}`;
-    
-    // Create team object with only the data from the JSON, ensuring no invalid values
-    const teamObj = {
-      team_id: team.team_id || id,
-      name: team.name || '',
-      url: team.url || '',
-      img: team.img || '',
-      division: (team.division && team.division !== 'NaN' && team.division !== 'null') ? team.division : '',
-      conference: (team.conference && team.conference !== 'NaN' && team.conference !== 'null') ? team.conference : '',
-      level: (team.level && team.level !== 'NaN' && team.level !== 'null') ? team.level : ''
-    };
-    
-    // Add to the appropriate league
-    if (processedData[leagueKey]) {
-      processedData[leagueKey].push(teamObj);
-    }
-  });
-  
-  return processedData;
-}
+// List of teams that need special handling for images
+const specialTeams = [
+  "Allegheny College",
+  "Auburn University at Montgomery",
+  "West Virginia University",
+  "Baylor University",
+  "Berry College",
+  "West Liberty University",
+  "University of California, Berkeley",
+  "University of California, Davis",
+  "University of Cincinnati",
+  "University of Dallas",
+  "University of Dubuque",
+  "Duquesne University",
+  "George Fox University",
+  "Gordon College",
+  "Hope College",
+  "Howard University",
+  "Howard Payne University",
+  "University of Iowa",
+  "Ithaca College",
+  "Kansas State University",
+  "Lake Forest College",
+  "Le Moyne College",
+  "Louisiana State University",
+  "Michigan State University",
+  "University of Nevada, Reno",
+  "University of Notre Dame",
+  "Oral Roberts Unviersity",
+  "University of Portland",
+  "Rice University",
+  "College of Saint Benedict"
+  // Add more team names as needed
+];
 
 // Initialize empty teams data
 const teamsData = {
@@ -79,58 +61,136 @@ const teamsData = {
   'PVF Pro': []
 };
 
-// Fetch the data from the URL
-fetch('https://api.volleyballdatabased.com/api/teams')
-  .then(response => {
-    if (!response.ok) {
-      throw new Error('Network response was not ok');
+// Function to process team data from any API
+function processTeamData(data, leagueKey) {
+  const processedTeams = [];
+  
+  // Process each team
+  data.forEach((team, index) => {
+    // Skip teams with invalid data
+    if (!team || !team.name) return;
+    
+    // Create a unique ID if not present
+    const id = team.team_id || `${leagueKey.toLowerCase().replace(/\s+/g, '-')}-${index}`;
+    
+    // Replace /bgl/ with /bgd/ in the img URL if it exists and team is in special list
+    let imgUrl = team.img || '';
+    if (imgUrl && typeof imgUrl === 'string') {
+      // Check if team name is in specialTeams list
+      if (specialTeams.includes(team.name)) {
+        console.log(`Applying special image handling for: ${team.name}`);
+        imgUrl = imgUrl.replace(/\/bgl\//g, '/bgd/');
+      }
     }
+    
+    // Create team object with only the data from the JSON, ensuring no invalid values
+    const teamObj = {
+      team_id: team.team_id || id,
+      id: team.team_id || id, // Add id for compatibility
+      name: team.name || '',
+      url: team.url || '',
+      img: imgUrl, // Use the modified image URL
+      division: (team.division && team.division !== 'NaN' && team.division !== 'null') ? team.division : '',
+      conference: (team.conference && team.conference !== 'NaN' && team.conference !== 'null') ? team.conference : '',
+      level: (team.level && team.level !== 'NaN' && team.level !== 'null') ? team.level : ''
+    };
+    
+    processedTeams.push(teamObj);
+  });
+  
+  return processedTeams;
+}
+
+// Helper function to fetch and process data from an endpoint
+async function fetchAndProcessTeams(url, leagueKey) {
+  try {
+    const response = await fetch(url);
+    if (!response.ok) {
+      throw new Error(`Network response was not ok for ${leagueKey}: ${response.status}`);
+    }
+    
     // Get text first so we can fix the JSON
-    return response.text();
-  })
-  .then(text => {
+    const text = await response.text();
+    
     // Fix NaN values in the JSON string before parsing
     const fixedText = text
       .replace(/: *NaN/g, ': null')
       .replace(/: *undefined/g, ': null');
     
     try {
-      return JSON.parse(fixedText);
+      const data = JSON.parse(fixedText);
+      return processTeamData(data, leagueKey);
     } catch (error) {
-      console.error('Error parsing JSON:', error);
-      throw new Error('Invalid JSON format after fixing NaN values');
+      console.error(`Error parsing JSON for ${leagueKey}:`, error);
+      throw new Error(`Invalid JSON format after fixing NaN values for ${leagueKey}`);
     }
-  })
-  .then(data => {
-    // Process the data and update our teamsData object
-    const processed = processTeamData(data);
+  } catch (error) {
+    console.error(`Error fetching teams data for ${leagueKey}:`, error);
+    // Return empty array on error so other fetches can still proceed
+    return [];
+  }
+}
+
+// Main function to fetch all team data
+async function fetchAllTeams() {
+  try {
+    // Create promises for all endpoints
+    const ncaaWomenPromise = fetchAndProcessTeams('https://api.volleyballdatabased.com/api/ncaaw_teams', 'NCAA Women');
+    const ncaaMenPromise = fetchAndProcessTeams('https://api.volleyballdatabased.com/api/ncaam_teams', 'NCAA Men');
+    const pvfPromise = fetchAndProcessTeams('https://api.volleyballdatabased.com/api/pvf_teams', 'PVF Pro');
+    const lovbPromise = fetchAndProcessTeams('https://api.volleyballdatabased.com/api/lovb_teams', 'LOVB');
     
-    // Update the teamsData object with the processed data
-    Object.keys(processed).forEach(key => {
-      teamsData[key] = processed[key];
-    });
+    // Wait for all promises to resolve
+    const [ncaaWomen, ncaaMen, pvf, lovb] = await Promise.all([
+      ncaaWomenPromise, 
+      ncaaMenPromise, 
+      pvfPromise, 
+      lovbPromise
+    ]);
+    
+    // Update the teamsData object
+    teamsData['NCAA Women'] = ncaaWomen;
+    teamsData['NCAA Men'] = ncaaMen;
+    teamsData['PVF Pro'] = pvf;
+    teamsData['LOVB'] = lovb;
     
     // Log success message
-    console.log(`Loaded ${Object.values(processed).flat().length} teams across all leagues`);
+    const totalTeams = ncaaWomen.length + ncaaMen.length + pvf.length + lovb.length;
+    console.log(`Loaded ${totalTeams} teams across all leagues`);
+    console.log(`- NCAA Women: ${ncaaWomen.length} teams`);
+    console.log(`- NCAA Men: ${ncaaMen.length} teams`);
+    console.log(`- PVF Pro: ${pvf.length} teams`);
+    console.log(`- LOVB: ${lovb.length} teams`);
+    console.log(`Applied special handling to ${specialTeams.length} teams`);
     
     // Dispatch an event to notify components that data is ready
     const event = new CustomEvent('teams-data-loaded', {
       detail: { teamsData }
     });
     document.dispatchEvent(event);
-  })
-  .catch(error => {
+    
+    return teamsData;
+    
+  } catch (error) {
     console.error('Error fetching teams data:', error);
     // Dispatch event even in case of error, so UI can show error state
     const event = new CustomEvent('teams-data-error', {
       detail: { error }
     });
     document.dispatchEvent(event);
-  });
+    
+    return null;
+  }
+}
 
 // Make the data available globally for non-module scripts
 window.vbdbData = {
   teamsData,
   leagueIcons,
-  lovbSvg
+  lovbSvg,
+  // Also expose the special teams list so it can be updated from other scripts if needed
+  specialTeams
 };
+
+// Start the data loading process
+fetchAllTeams();

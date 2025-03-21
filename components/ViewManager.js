@@ -565,36 +565,6 @@ class ViewManager extends HTMLElement {
         <team-detail level="${level}" team-name="${teamName}" team-id="${teamId}"></team-detail>
         
         <div class="placeholder-section">
-          <h2>Team Roster</h2>
-          <div class="placeholder-table">
-            <div class="placeholder-header">
-              <div class="placeholder-cell"></div>
-              <div class="placeholder-cell"></div>
-              <div class="placeholder-cell"></div>
-              <div class="placeholder-cell"></div>
-            </div>
-            <div class="placeholder-row">
-              <div class="placeholder-cell"></div>
-              <div class="placeholder-cell"></div>
-              <div class="placeholder-cell"></div>
-              <div class="placeholder-cell"></div>
-            </div>
-            <div class="placeholder-row">
-              <div class="placeholder-cell"></div>
-              <div class="placeholder-cell"></div>
-              <div class="placeholder-cell"></div>
-              <div class="placeholder-cell"></div>
-            </div>
-            <div class="placeholder-row">
-              <div class="placeholder-cell"></div>
-              <div class="placeholder-cell"></div>
-              <div class="placeholder-cell"></div>
-              <div class="placeholder-cell"></div>
-            </div>
-          </div>
-        </div>
-        
-        <div class="placeholder-section">
           <h2>Recent Results</h2>
           <div class="placeholder-results">
             <div class="placeholder-result-item">
@@ -610,7 +580,6 @@ class ViewManager extends HTMLElement {
             <div class="placeholder-result-item">
               <div class="placeholder-date"></div>
               <div class="placeholder-teams"></div>
-              <div class="placeholder-score"></div>
             </div>
           </div>
         </div>
@@ -638,7 +607,6 @@ class ViewManager extends HTMLElement {
       <div class="league-data">
         <nav class="league-nav">
           <ul>
-            <li><a href="#" data-tab="overview" class="${activeTab === 'overview' ? 'active' : ''}">Overview</a></li>
             <li><a href="#" data-tab="teams" class="${activeTab === 'teams' ? 'active' : ''}">Teams</a></li>
             <li><a href="#" data-tab="players" class="${activeTab === 'players' ? 'active' : ''}">Players</a></li>
             <li><a href="#" data-tab="standings" class="${activeTab === 'standings' ? 'active' : ''}">Standings</a></li>
@@ -647,11 +615,6 @@ class ViewManager extends HTMLElement {
         </nav>
         
         <div class="tab-content-container">
-          <!-- Overview Tab -->
-          <div class="tab-content" data-tab="overview" style="display: ${activeTab === 'overview' ? 'block' : 'none'}">
-            <overview-tab league="${league}" data-timestamp="${timestamp}"></overview-tab>
-          </div>
-          
           <!-- Teams Tab -->
           <div class="tab-content" data-tab="teams" style="display: ${activeTab === 'teams' ? 'block' : 'none'}">
             <teams-tab league="${league}" data-timestamp="${timestamp}"></teams-tab>
