@@ -159,6 +159,33 @@ class ScheduleTab extends HTMLElement {
       
       return Array.from(teams).sort();
     }
+
+    formatScore(scoreText) {
+        if (!scoreText) return '';
+        
+        // Extract the sets score (like "3-2") and the detailed score (like "[20-25, 25-15, 17-25, 32-30, 15-7]")
+        const parts = scoreText.split(' ');
+        if (parts.length < 2) return scoreText;
+        
+        const setsScore = parts[0];
+        const detailedScore = parts.slice(1).join(' ');
+        
+        // Parse the detailed score and add spans with classes
+        if (detailedScore.startsWith('[') && detailedScore.endsWith(']')) {
+          const scoresInside = detailedScore.substring(1, detailedScore.length - 1);
+          const sets = scoresInside.split(', ');
+          
+          if (sets.length > 2) {
+            // Wrap first two sets and remaining sets in different spans
+            const firstPart = sets.slice(0, 2).join(', ');
+            const secondPart = sets.slice(2).join(', ');
+            return `${setsScore} [<span class="score-first-part">${firstPart}</span>, <span class="score-second-part">${secondPart}</span>]`;
+          }
+        }
+        
+        // If we can't format it properly, return the original
+        return scoreText;
+      }
     
     render() {
       const league = this.getAttribute('league');
@@ -395,8 +422,9 @@ h1 {
   flex-direction: column;
   justify-content: center;
   align-items: center;
-  padding: 0 20px;
+  padding: 15px 20px; /* Fixed padding */
   min-width: 180px;
+  min-height: 80px; /* Fixed minimum height */
 }
 
 .match-date {
@@ -410,6 +438,9 @@ h1 {
   font-weight: 600;
   color: var(--text, #e0e0e0);
   text-align: center;
+  line-height: 1.4;
+  max-width: 180px;
+  white-space: normal;
 }
 
 .vs-badge {
@@ -575,7 +606,7 @@ h1 {
                       <div class="match-details">
                         <span class="vs-badge">VS</span>
                         <div class="match-date">${match.date}</div>
-                        <div class="match-score">${match.score}</div>
+                        <div class="match-score">${this.formatScore(match.score)}</div>
                       </div>
                       
                       <div class="team-block away-team">

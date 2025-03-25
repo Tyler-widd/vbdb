@@ -563,26 +563,6 @@ class ViewManager extends HTMLElement {
       <div class="team-detail-content">
         <!-- Pass team-id attribute to the component -->
         <team-detail level="${level}" team-name="${teamName}" team-id="${teamId}"></team-detail>
-        
-        <div class="placeholder-section">
-          <h2>Recent Results</h2>
-          <div class="placeholder-results">
-            <div class="placeholder-result-item">
-              <div class="placeholder-date"></div>
-              <div class="placeholder-teams"></div>
-              <div class="placeholder-score"></div>
-            </div>
-            <div class="placeholder-result-item">
-              <div class="placeholder-date"></div>
-              <div class="placeholder-teams"></div>
-              <div class="placeholder-score"></div>
-            </div>
-            <div class="placeholder-result-item">
-              <div class="placeholder-date"></div>
-              <div class="placeholder-teams"></div>
-            </div>
-          </div>
-        </div>
       </div>
     `;
   }

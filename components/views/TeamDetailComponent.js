@@ -4,8 +4,12 @@ class TeamDetail extends HTMLElement {
     this.attachShadow({ mode: 'open' });
     this.teamData = null;
     this.rosterData = null;
+    this.resultsData = null;
     this.isLoadingRoster = false;
+    this.isLoadingResults = false;
     this.hasRosterError = false;
+    this.hasResultsError = false;
+    this.activeTab = 'roster'; // Default tab
     
     // Sorting state
     this.sortColumn = 'name';  // Default sort by name
@@ -20,9 +24,14 @@ class TeamDetail extends HTMLElement {
     if (oldValue !== newValue) {
       this.render();
       
-      // If team-id changed, fetch roster data
+      // If team-id changed, fetch roster and results data
       if (name === 'team-id' && newValue) {
         this.fetchRosterData();
+        
+        // Only fetch results for LOVB teams
+        if (this.getAttribute('level') === 'LOVB') {
+          this.fetchResultsData();
+        }
       }
     }
   }
@@ -36,6 +45,11 @@ class TeamDetail extends HTMLElement {
       // Fetch roster data if team ID is available
       if (this.getAttribute('team-id')) {
         this.fetchRosterData();
+        
+        // Only fetch results for LOVB teams
+        if (this.getAttribute('level') === 'LOVB') {
+          this.fetchResultsData();
+        }
       }
     } else {
       // If data isn't loaded yet, listen for the data-loaded event
@@ -69,6 +83,11 @@ class TeamDetail extends HTMLElement {
     // Fetch roster data if team ID is available
     if (this.getAttribute('team-id')) {
       this.fetchRosterData();
+      
+      // Only fetch results for LOVB teams
+      if (this.getAttribute('level') === 'LOVB') {
+        this.fetchResultsData();
+      }
     }
     
     // Remove the listener since we no longer need it
@@ -97,7 +116,7 @@ class TeamDetail extends HTMLElement {
     this.isLoadingRoster = true;
     this.hasRosterError = false;
     this.rosterData = null;
-    this.renderRoster();
+    this.renderTabContent();
     
     // Determine API endpoint based on level
     let endpoint = '';
@@ -115,7 +134,7 @@ class TeamDetail extends HTMLElement {
       console.error(`Unsupported level for roster data: ${level}`);
       this.isLoadingRoster = false;
       this.hasRosterError = true;
-      this.renderRoster();
+      this.renderTabContent();
       return;
     }
     
@@ -133,13 +152,71 @@ class TeamDetail extends HTMLElement {
         this.rosterData = data;
         this.isLoadingRoster = false;
         console.log(`Loaded roster data for ${teamId}:`, data);
-        this.renderRoster();
+        this.renderTabContent();
       })
       .catch(error => {
         console.error(`Error fetching roster data for ${teamId}:`, error);
         this.isLoadingRoster = false;
         this.hasRosterError = true;
-        this.renderRoster();
+        this.renderTabContent();
+      });
+  }
+  
+  // New method to fetch match results for a team
+  fetchResultsData() {
+    const teamId = this.getAttribute('team-id');
+    const level = this.getAttribute('level');
+    
+    if (level !== 'LOVB' || !teamId) {
+      return;
+    }
+    
+    // Set loading state
+    this.isLoadingResults = true;
+    this.hasResultsError = false;
+    this.resultsData = null;
+    
+    if (this.activeTab === 'results') {
+      this.renderTabContent();
+    }
+    
+    console.log(`Fetching match results for ${teamId}`);
+    
+    // Fetch all LOVB results and filter for this team
+    fetch('https://api.volleyballdatabased.com/api/lovb_results')
+      .then(response => {
+        if (!response.ok) {
+          throw new Error(`Network response was not ok: ${response.status}`);
+        }
+        return response.json();
+      })
+      .then(data => {
+        // Filter results for this team
+        this.resultsData = data.filter(match => 
+          match.home_team_id === teamId || match.away_team_id === teamId
+        );
+        
+        // Sort by date (most recent first)
+        this.resultsData.sort((a, b) => {
+          // Simple string comparison for dates like "Wed, January 8th"
+          return b.date.localeCompare(a.date);
+        });
+        
+        this.isLoadingResults = false;
+        console.log(`Loaded ${this.resultsData.length} match results for ${teamId}`);
+        
+        if (this.activeTab === 'results') {
+          this.renderTabContent();
+        }
+      })
+      .catch(error => {
+        console.error(`Error fetching match results for ${teamId}:`, error);
+        this.isLoadingResults = false;
+        this.hasResultsError = true;
+        
+        if (this.activeTab === 'results') {
+          this.renderTabContent();
+        }
       });
   }
   
@@ -219,8 +296,8 @@ class TeamDetail extends HTMLElement {
       this.sortDirection = 'asc';
     }
     
-    // Re-render the roster with new sort
-    this.renderRoster();
+    // Re-render the active tab with new sort
+    this.renderTabContent();
   }
   
   // Setup column sort handlers
@@ -234,13 +311,84 @@ class TeamDetail extends HTMLElement {
     });
   }
   
-  // Render just the roster section
-  renderRoster() {
-    const rosterContainer = this.shadowRoot.querySelector('.roster-container');
-    if (!rosterContainer) return;
+  // Setup tab navigation handlers
+  setupTabListeners() {
+    const tabLinks = this.shadowRoot.querySelectorAll('.tab-link');
+    tabLinks.forEach(link => {
+      link.addEventListener('click', (e) => {
+        e.preventDefault();
+        const tabName = link.getAttribute('data-tab');
+        this.switchTab(tabName);
+      });
+    });
+  }
+  
+  // Switch between tabs
+  switchTab(tabName) {
+    if (tabName === this.activeTab) return;
+    
+    this.activeTab = tabName;
+    
+    // Update the tab UI
+    const tabLinks = this.shadowRoot.querySelectorAll('.tab-link');
+    tabLinks.forEach(link => {
+      const tab = link.getAttribute('data-tab');
+      if (tab === tabName) {
+        link.classList.add('active');
+      } else {
+        link.classList.remove('active');
+      }
+    });
+    
+    // Update the content
+    this.renderTabContent();
+  }
+  
+  // Render the active tab content
+  renderTabContent() {
+    if (this.activeTab === 'roster') {
+      this.renderRosterTab();
+    } else if (this.activeTab === 'results') {
+      this.renderResultsTab();
+    }
+  }
+  
+  // Format score for display
+  formatScore(scoreText) {
+    if (!scoreText) return '';
+    
+    const parts = scoreText.split(' ');
+    if (parts.length < 2) return scoreText;
+    
+    const setsScore = parts[0];
+    const detailedScore = parts.slice(1).join(' ');
+    
+    if (detailedScore.startsWith('[') && detailedScore.endsWith(']')) {
+      const scoresInside = detailedScore.substring(1, detailedScore.length - 1);
+      const sets = scoresInside.split(', ');
+      
+      if (sets.length > 2) {
+        const firstPart = sets.slice(0, 2).join(', ');
+        const secondPart = sets.slice(2).join(', ');
+        return `${setsScore} [<span class="score-first-part">${firstPart}</span>, <span class="score-second-part">${secondPart}</span>]`;
+      }
+    }
+    
+    return scoreText;
+  }
+  
+  // Remove "LOVB " prefix from team names
+  removeLeaguePrefix(teamName) {
+    return teamName.replace(/^LOVB /, '');
+  }
+  
+  // Render just the roster tab
+  renderRosterTab() {
+    const tabContentContainer = this.shadowRoot.querySelector('.tab-content-container');
+    if (!tabContentContainer) return;
     
     if (this.isLoadingRoster) {
-      rosterContainer.innerHTML = `
+      tabContentContainer.innerHTML = `
         <div class="loading-message">
           <div class="loading-spinner"></div>
           <p>Loading team roster...</p>
@@ -250,7 +398,7 @@ class TeamDetail extends HTMLElement {
     }
     
     if (this.hasRosterError) {
-      rosterContainer.innerHTML = `
+      tabContentContainer.innerHTML = `
         <div class="error-message">
           <p>Unable to load roster data. Please try again later.</p>
         </div>
@@ -259,7 +407,7 @@ class TeamDetail extends HTMLElement {
     }
     
     if (!this.rosterData || this.rosterData.length === 0) {
-      rosterContainer.innerHTML = `
+      tabContentContainer.innerHTML = `
         <div class="empty-message">
           <p>No roster data available for this team.</p>
         </div>
@@ -271,44 +419,143 @@ class TeamDetail extends HTMLElement {
     const sortedData = this.sortData(this.rosterData, this.sortColumn, this.sortDirection);
     
     // Render the roster table
-    rosterContainer.innerHTML = `
-    <div class="table-container">
-      <table>
-        <thead>
-          <tr>
-            <th class="name-col sortable ${this.sortColumn === 'name' ? `sort-${this.sortDirection}` : ''}" data-column="name">Name</th>
-            <th class="position-col sortable ${this.sortColumn === 'position' ? `sort-${this.sortDirection}` : ''}" data-column="position">Position</th>
-            <th class="year-col sortable ${this.sortColumn === 'year' ? `sort-${this.sortDirection}` : ''}" data-column="year">Year</th>
-            <th class="height-col sortable ${this.sortColumn === 'height' ? `sort-${this.sortDirection}` : ''}" data-column="height">Height</th>
-            <th class="hometown-col sortable ${this.sortColumn === 'hometown' ? `sort-${this.sortDirection}` : ''}" data-column="hometown">Hometown</th>
-          </tr>
-        </thead>
-        <tbody>
-          ${sortedData.map(player => `
+    tabContentContainer.innerHTML = `
+      <div class="table-container">
+        <table>
+          <thead>
             <tr>
-              <td>
-              <div class="player-name">
-                ${player.profile_url ? 
-                  `<a href="${player.profile_url}" target="_blank" class="player-link" title="View ${player.name}'s profile">
-                    ${player.jersey ? player.jersey + ' - ' : ''}${player.name}
-                  </a>` : 
-                  `${player.jersey ? player.jersey + ' - ' : ''}${player.name}`
-                }
-              </div>
-              </td>
-              <td>${player.position || '-'}</td>
-              <td>${player.class_year || '-'}</td>
-              <td>${player.height || '-'}</td>
-              <td>${player.hometown || '-'}</td>
+              <th class="name-col sortable ${this.sortColumn === 'name' ? `sort-${this.sortDirection}` : ''}" data-column="name">Name</th>
+              <th class="position-col sortable ${this.sortColumn === 'position' ? `sort-${this.sortDirection}` : ''}" data-column="position">Position</th>
+              <th class="year-col sortable ${this.sortColumn === 'year' ? `sort-${this.sortDirection}` : ''}" data-column="year">Year</th>
+              <th class="height-col sortable ${this.sortColumn === 'height' ? `sort-${this.sortDirection}` : ''}" data-column="height">Height</th>
+              <th class="hometown-col sortable ${this.sortColumn === 'hometown' ? `sort-${this.sortDirection}` : ''}" data-column="hometown">Hometown</th>
             </tr>
-          `).join('')}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            ${sortedData.map(player => `
+              <tr>
+                <td>
+                <div class="player-name">
+                  ${player.profile_url ? 
+                    `<a href="${player.profile_url}" target="_blank" class="player-link" title="View ${player.name}'s profile">
+                      ${player.jersey ? player.jersey + ' - ' : ''}${player.name}
+                    </a>` : 
+                    `${player.jersey ? player.jersey + ' - ' : ''}${player.name}`
+                  }
+                </div>
+                </td>
+                <td>${player.position || '-'}</td>
+                <td>${player.class_year || '-'}</td>
+                <td>${player.height || '-'}</td>
+                <td>${player.hometown || '-'}</td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
       </div>
     `;
     
     // Set up sort event listeners
     this.setupSortListeners();
+  }
+  
+  // Render the results tab
+  renderResultsTab() {
+    const tabContentContainer = this.shadowRoot.querySelector('.tab-content-container');
+    if (!tabContentContainer) return;
+    
+    // Show loading state
+    if (this.isLoadingResults) {
+      tabContentContainer.innerHTML = `
+        <div class="loading-message">
+          <div class="loading-spinner"></div>
+          <p>Loading match results...</p>
+        </div>
+      `;
+      return;
+    }
+    
+    // Show error state
+    if (this.hasResultsError) {
+      tabContentContainer.innerHTML = `
+        <div class="error-message">
+          <p>Unable to load match results. Please try again later.</p>
+        </div>
+      `;
+      return;
+    }
+    
+    // Show empty state
+    if (!this.resultsData || this.resultsData.length === 0) {
+      tabContentContainer.innerHTML = `
+        <div class="empty-message">
+          <p>No match results available for this team.</p>
+        </div>
+      `;
+      return;
+    }
+    
+    const teamId = this.getAttribute('team-id');
+    
+    // Render the results table
+    tabContentContainer.innerHTML = `
+      <div class="table-container">
+        <table>
+          <thead>
+            <tr>
+              <th class="date-col">Date</th>
+              <th class="location-col">Location</th>
+              <th class="opponent-col">Opponent</th>
+              <th class="score-col">Score</th>
+              <th class="result-col">Result</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${this.resultsData.map(match => {
+              const isHome = match.home_team_id === teamId;
+              const opponent = isHome ? 
+                this.removeLeaguePrefix(match.away_team_name) : 
+                this.removeLeaguePrefix(match.home_team_name);
+              
+              // Determine win/loss
+              const scoreParts = match.score.split(' ')[0].split('-');
+              const homeScore = parseInt(scoreParts[0], 10);
+              const awayScore = parseInt(scoreParts[1], 10);
+              
+              let result = '';
+              if (isHome) {
+                result = homeScore > awayScore ? 'Win' : 'Loss';
+              } else {
+                result = awayScore > homeScore ? 'Win' : 'Loss';
+              }
+              
+              const resultClass = result === 'Win' ? 'win-result' : 'loss-result';
+              
+              return `
+                <tr data-url="${match.match_url}" class="result-row">
+                  <td>${match.date}</td>
+                  <td>${isHome ? 'Home' : 'Away'}</td>
+                  <td>${opponent}</td>
+                  <td class="score-cell">${this.formatScore(match.score)}</td>
+                  <td class="${resultClass}">${result}</td>
+                </tr>
+              `;
+            }).join('')}
+          </tbody>
+        </table>
+      </div>
+    `;
+    
+    // Add click listeners to the rows
+    const resultRows = tabContentContainer.querySelectorAll('.result-row');
+    resultRows.forEach(row => {
+      row.addEventListener('click', () => {
+        const url = row.getAttribute('data-url');
+        if (url) {
+          window.open(url, '_blank');
+        }
+      });
+    });
   }
 
   // Updated findTeamData method that prioritizes team-id
@@ -519,6 +766,9 @@ class TeamDetail extends HTMLElement {
       (this.teamData.conference === 'LOVB' || this.teamData.conference === 'PVF' || 
        level === 'LOVB' || level === 'PVF Pro');
     
+    // Determine which tabs to show based on league
+    const showResultsTab = level === 'LOVB';
+    
     this.shadowRoot.innerHTML = `
       <style>
         :host {
@@ -601,25 +851,55 @@ class TeamDetail extends HTMLElement {
           text-decoration: none;
         }
         
-        /* Roster styles */
-        h2 {
-          font-size: 1.8rem;
+        /* Tab Navigation */
+        .tabs-container {
           margin-top: 2rem;
+        }
+        
+        .tabs-nav {
+          display: flex;
+          border-bottom: 1px solid rgba(255, 255, 255, 0.1);
           margin-bottom: 1rem;
+        }
+        
+        .tab-link {
+          padding: 0.8rem 1.5rem;
+          color: var(--text-secondary, #aaaaaa);
+          text-decoration: none;
+          position: relative;
+          cursor: pointer;
+          transition: color 0.2s;
+        }
+        
+        .tab-link.active {
+          color: var(--accent, #5ca5c7);
+        }
+        
+        .tab-link.active::after {
+          content: '';
+          position: absolute;
+          bottom: -1px;
+          left: 0;
+          width: 100%;
+          height: 2px;
+          background: var(--accent, #5ca5c7);
+        }
+        
+        .tab-link:hover:not(.active) {
           color: var(--text, #e0e0e0);
         }
         
-        .roster-container {
+        .tab-content-container {
           background-color: var(--card-bg, #1e1e1e);
           border-radius: 10px;
           margin-bottom: 2rem;
           overflow-x: auto;
         }
         
+        /* Table styles */
         .table-container {
           background-color: var(--card-bg, #1e1e1e);
           color: var(--text, #e0e0e0);
-          border-radius: 12px;
           overflow-x: auto;
           -webkit-overflow-scrolling: touch;
           border-radius: 8px;
@@ -656,7 +936,7 @@ class TeamDetail extends HTMLElement {
           white-space: nowrap;
         }
         
-        /* Fixed column widths */
+        /* Column widths for roster */
         .name-col {
           width: 40%;
         }
@@ -675,6 +955,27 @@ class TeamDetail extends HTMLElement {
         
         .year-col {
           width: 10%;
+        }
+        
+        /* Column widths for results */
+        .date-col {
+          width: 20%;
+        }
+        
+        .location-col {
+          width: 10%;
+        }
+        
+        .opponent-col {
+          width: 30%;
+        }
+        
+        .score-col {
+          width: 25%;
+        }
+        
+        .result-col {
+          width: 15%;
         }
         
         th {
@@ -711,6 +1012,24 @@ class TeamDetail extends HTMLElement {
         
         tbody tr:hover {
           background-color: rgba(255, 255, 255, 0.05);
+        }
+        
+        .result-row {
+          cursor: pointer;
+        }
+        
+        .win-result {
+          color: #4caf50;
+          font-weight: 600;
+        }
+        
+        .loss-result {
+          color: #f44336;
+          font-weight: 600;
+        }
+        
+        .score-cell {
+          font-weight: 600;
         }
         
         td.text-center {
@@ -752,6 +1071,16 @@ class TeamDetail extends HTMLElement {
           margin-bottom: 1rem;
         }
         
+        /* Score formatting - no line breaks on desktop */
+        .score-first-part, .score-second-part {
+          display: inline !important;
+        }
+        
+        .score-first-part::after {
+          content: none !important;
+          display: none !important;
+        }
+        
         @keyframes pulse {
           0% { opacity: 0.6; }
           50% { opacity: 0.8; }
@@ -770,6 +1099,26 @@ class TeamDetail extends HTMLElement {
           .team-image-container {
             width: 100%;
             height: 150px;
+          }
+          
+          .tabs-nav {
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+          }
+          
+          .tab-link {
+            padding: 0.8rem 1rem;
+            white-space: nowrap;
+          }
+          
+          /* Apply line breaks on mobile */
+          .score-first-part::after {
+            content: "" !important;
+            display: block !important;
+          }
+          
+          .score-second-part {
+            display: inline-block !important;
           }
         }
       </style>
@@ -793,14 +1142,22 @@ class TeamDetail extends HTMLElement {
         </div>
       </div>
       
-      <h2>Team Roster</h2>
-      <div class="roster-container">
-        <!-- Roster content will be rendered here -->
+      <div class="tabs-container">
+        <div class="tabs-nav">
+          <a class="tab-link ${this.activeTab === 'roster' ? 'active' : ''}" data-tab="roster">Roster</a>
+          ${showResultsTab ? `<a class="tab-link ${this.activeTab === 'results' ? 'active' : ''}" data-tab="results">Results</a>` : ''}
+        </div>
+        <div class="tab-content-container">
+          <!-- Tab content will be rendered here by the renderTabContent method -->
+        </div>
       </div>
     `;
     
-    // Render roster data if available
-    this.renderRoster();
+    // Set up tab navigation
+    this.setupTabListeners();
+    
+    // Render the active tab content
+    this.renderTabContent();
   }
 }
 
