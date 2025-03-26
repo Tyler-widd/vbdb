@@ -161,3 +161,4 @@ class ScheduleTab extends HTMLElement {
 customElements.define('players-tab', PlayersTab);
 customElements.define('standings-tab', StandingsTab);
 customElements.define('schedule-tab', ScheduleTab);
+customElements.define('pvf-schedule-tab', PvfScheduleTab);

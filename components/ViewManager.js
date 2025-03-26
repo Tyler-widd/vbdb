@@ -614,6 +614,11 @@ class ViewManager extends HTMLElement {
           <div class="tab-content" data-tab="schedule" style="display: ${activeTab === 'schedule' ? 'block' : 'none'}">
             <schedule-tab league="${league}" data-timestamp="${timestamp}"></schedule-tab>
           </div>
+
+          <!-- PVF Schedule Tab -->
+          <div class="tab-content" data-tab="schedule" style="display: ${activeTab === 'schedule' ? 'block' : 'none'}">
+            <pvf-schedule-tab league="${league}" data-timestamp="${timestamp}"></pvf-schedule-tab>
+          </div>
         </div>
       </div>
     `;

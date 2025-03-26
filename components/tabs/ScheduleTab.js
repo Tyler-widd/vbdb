@@ -253,10 +253,6 @@ class ScheduleTab extends HTMLElement {
             }
           </style>
           
-          <div class="content-card">
-            <h2>${league} Schedule</h2>
-            <p>Match results for ${league} are not available at this time.</p>
-          </div>
         `;
         return;
       }

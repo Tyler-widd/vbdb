@@ -28,8 +28,9 @@ class TeamDetail extends HTMLElement {
       if (name === 'team-id' && newValue) {
         this.fetchRosterData();
         
-        // Only fetch results for LOVB teams
-        if (this.getAttribute('level') === 'LOVB') {
+        // Only fetch results for LOVB or PVF Pro teams
+        const level = this.getAttribute('level');
+        if (level === 'LOVB' || level === 'PVF Pro') {
           this.fetchResultsData();
         }
       }
@@ -46,8 +47,9 @@ class TeamDetail extends HTMLElement {
       if (this.getAttribute('team-id')) {
         this.fetchRosterData();
         
-        // Only fetch results for LOVB teams
-        if (this.getAttribute('level') === 'LOVB') {
+        // Only fetch results for LOVB or PVF Pro teams
+        const level = this.getAttribute('level');
+        if (level === 'LOVB' || level === 'PVF Pro') {
           this.fetchResultsData();
         }
       }
@@ -84,8 +86,9 @@ class TeamDetail extends HTMLElement {
     if (this.getAttribute('team-id')) {
       this.fetchRosterData();
       
-      // Only fetch results for LOVB teams
-      if (this.getAttribute('level') === 'LOVB') {
+      // Only fetch results for LOVB or PVF Pro teams
+      const level = this.getAttribute('level');
+      if (level === 'LOVB' || level === 'PVF Pro') {
         this.fetchResultsData();
       }
     }
@@ -162,12 +165,12 @@ class TeamDetail extends HTMLElement {
       });
   }
   
-  // New method to fetch match results for a team
+  // Method to fetch match results for a team - now handles both LOVB and PVF Pro
   fetchResultsData() {
     const teamId = this.getAttribute('team-id');
     const level = this.getAttribute('level');
     
-    if (level !== 'LOVB' || !teamId) {
+    if ((level !== 'LOVB' && level !== 'PVF Pro') || !teamId) {
       return;
     }
     
@@ -180,10 +183,18 @@ class TeamDetail extends HTMLElement {
       this.renderTabContent();
     }
     
-    console.log(`Fetching match results for ${teamId}`);
+    console.log(`Fetching match results for ${teamId} (${level})`);
     
-    // Fetch all LOVB results and filter for this team
-    fetch('https://api.volleyballdatabased.com/api/lovb_results')
+    let endpoint;
+    if (level === 'LOVB') {
+      // For LOVB, fetch all results and filter for this team
+      endpoint = 'https://api.volleyballdatabased.com/api/lovb_results';
+    } else if (level === 'PVF Pro') {
+      // For PVF Pro, use the team-specific endpoint with 2025 year
+      endpoint = `https://api.volleyballdatabased.com/api/pvf_results/${teamId}/2025`;
+    }
+    
+    fetch(endpoint)
       .then(response => {
         if (!response.ok) {
           throw new Error(`Network response was not ok: ${response.status}`);
@@ -191,16 +202,29 @@ class TeamDetail extends HTMLElement {
         return response.json();
       })
       .then(data => {
-        // Filter results for this team
-        this.resultsData = data.filter(match => 
-          match.home_team_id === teamId || match.away_team_id === teamId
-        );
-        
-        // Sort by date (most recent first)
-        this.resultsData.sort((a, b) => {
-          // Simple string comparison for dates like "Wed, January 8th"
-          return b.date.localeCompare(a.date);
-        });
+        if (level === 'LOVB') {
+          // Filter LOVB results for this team
+          this.resultsData = data.filter(match => 
+            match.home_team_id === teamId || match.away_team_id === teamId
+          );
+          
+          // Sort by date (most recent first)
+          this.resultsData.sort((a, b) => {
+            // Simple string comparison for dates like "Wed, January 8th"
+            return b.date.localeCompare(a.date);
+          });
+        } else {
+          // For PVF Pro, we already get filtered results, just assign
+          this.resultsData = data;
+          
+          // Sort by date (most recent first)
+          if (Array.isArray(this.resultsData)) {
+            this.resultsData.sort((a, b) => {
+              // Parse ISO dates for PVF data
+              return new Date(b.date) - new Date(a.date);
+            });
+          }
+        }
         
         this.isLoadingResults = false;
         console.log(`Loaded ${this.resultsData.length} match results for ${teamId}`);
@@ -353,33 +377,61 @@ class TeamDetail extends HTMLElement {
     }
   }
   
+  // Format date from ISO to a more readable format (for PVF)
+  formatPvfDate(dateString) {
+    if (!dateString) return '';
+    
+    try {
+      const date = new Date(dateString);
+      // Format: Day, Month DD, YYYY
+      return date.toLocaleDateString('en-US', { 
+        weekday: 'short',
+        month: 'long', 
+        day: 'numeric',
+        year: 'numeric'
+      });
+    } catch (error) {
+      console.error('Error formatting date:', error);
+      return dateString;
+    }
+  }
+  
   // Format score for display
   formatScore(scoreText) {
     if (!scoreText) return '';
     
-    const parts = scoreText.split(' ');
-    if (parts.length < 2) return scoreText;
-    
-    const setsScore = parts[0];
-    const detailedScore = parts.slice(1).join(' ');
-    
-    if (detailedScore.startsWith('[') && detailedScore.endsWith(']')) {
-      const scoresInside = detailedScore.substring(1, detailedScore.length - 1);
-      const sets = scoresInside.split(', ');
+    // For LOVB format
+    if (typeof scoreText === 'string') {
+      const parts = scoreText.split(' ');
+      if (parts.length < 2) return scoreText;
       
-      if (sets.length > 2) {
-        const firstPart = sets.slice(0, 2).join(', ');
-        const secondPart = sets.slice(2).join(', ');
-        return `${setsScore} [<span class="score-first-part">${firstPart}</span>, <span class="score-second-part">${secondPart}</span>]`;
+      const setsScore = parts[0];
+      const detailedScore = parts.slice(1).join(' ');
+      
+      if (detailedScore.startsWith('[') && detailedScore.endsWith(']')) {
+        const scoresInside = detailedScore.substring(1, detailedScore.length - 1);
+        const sets = scoresInside.split(', ');
+        
+        if (sets.length > 2) {
+          const firstPart = sets.slice(0, 2).join(', ');
+          const secondPart = sets.slice(2).join(', ');
+          return `${setsScore} [<span class="score-first-part">${firstPart}</span>, <span class="score-second-part">${secondPart}</span>]`;
+        }
       }
     }
     
+    // Handle PVF format or fall back to original
     return scoreText;
   }
   
-  // Remove "LOVB " prefix from team names
-  removeLeaguePrefix(teamName) {
-    return teamName.replace(/^LOVB /, '');
+  // Remove "LOVB " or "PVF " prefix from team names
+  removeLeaguePrefix(teamName, level) {
+    if (level === 'LOVB') {
+      return teamName.replace(/^LOVB /, '');
+    } else if (level === 'PVF Pro') {
+      return teamName.replace(/^PVF /, '');
+    }
+    return teamName;
   }
   
   // Render just the roster tab
@@ -459,10 +511,12 @@ class TeamDetail extends HTMLElement {
     this.setupSortListeners();
   }
   
-  // Render the results tab
+  // Render the results tab - now handles both LOVB and PVF Pro formats
   renderResultsTab() {
     const tabContentContainer = this.shadowRoot.querySelector('.tab-content-container');
     if (!tabContentContainer) return;
+    
+    const level = this.getAttribute('level');
     
     // Show loading state
     if (this.isLoadingResults) {
@@ -497,65 +551,149 @@ class TeamDetail extends HTMLElement {
     
     const teamId = this.getAttribute('team-id');
     
-    // Render the results table
-    tabContentContainer.innerHTML = `
-      <div class="table-container">
-        <table>
-          <thead>
-            <tr>
-              <th class="date-col">Date</th>
-              <th class="location-col">Location</th>
-              <th class="opponent-col">Opponent</th>
-              <th class="score-col">Score</th>
-              <th class="result-col">Result</th>
-            </tr>
-          </thead>
-          <tbody>
-            ${this.resultsData.map(match => {
-              const isHome = match.home_team_id === teamId;
-              const opponent = isHome ? 
-                this.removeLeaguePrefix(match.away_team_name) : 
-                this.removeLeaguePrefix(match.home_team_name);
-              
-              // Determine win/loss
-              const scoreParts = match.score.split(' ')[0].split('-');
-              const homeScore = parseInt(scoreParts[0], 10);
-              const awayScore = parseInt(scoreParts[1], 10);
-              
-              let result = '';
-              if (isHome) {
-                result = homeScore > awayScore ? 'Win' : 'Loss';
-              } else {
-                result = awayScore > homeScore ? 'Win' : 'Loss';
-              }
-              
-              const resultClass = result === 'Win' ? 'win-result' : 'loss-result';
-              
-              return `
-                <tr data-url="${match.match_url}" class="result-row">
-                  <td>${match.date}</td>
-                  <td>${isHome ? 'Home' : 'Away'}</td>
-                  <td>${opponent}</td>
-                  <td class="score-cell">${this.formatScore(match.score)}</td>
-                  <td class="${resultClass}">${result}</td>
-                </tr>
-              `;
-            }).join('')}
-          </tbody>
-        </table>
-      </div>
-    `;
-    
-    // Add click listeners to the rows
-    const resultRows = tabContentContainer.querySelectorAll('.result-row');
-    resultRows.forEach(row => {
-      row.addEventListener('click', () => {
-        const url = row.getAttribute('data-url');
-        if (url) {
-          window.open(url, '_blank');
-        }
+    // Check which league format to use
+    if (level === 'LOVB') {
+      // Render LOVB style table
+      tabContentContainer.innerHTML = `
+        <div class="table-container">
+          <table>
+            <thead>
+              <tr>
+                <th class="date-col">Date</th>
+                <th class="location-col">Location</th>
+                <th class="opponent-col">Opponent</th>
+                <th class="score-col">Score</th>
+                <th class="result-col">Result</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${this.resultsData.map(match => {
+                const isHome = match.home_team_id === teamId;
+                const opponent = isHome ? 
+                  this.removeLeaguePrefix(match.away_team_name, level) : 
+                  this.removeLeaguePrefix(match.home_team_name, level);
+                
+                // Determine win/loss
+                const scoreParts = match.score.split(' ')[0].split('-');
+                const homeScore = parseInt(scoreParts[0], 10);
+                const awayScore = parseInt(scoreParts[1], 10);
+                
+                let result = '';
+                if (isHome) {
+                  result = homeScore > awayScore ? 'Win' : 'Loss';
+                } else {
+                  result = awayScore > homeScore ? 'Win' : 'Loss';
+                }
+                
+                const resultClass = result === 'Win' ? 'win-result' : 'loss-result';
+                
+                return `
+                  <tr data-url="${match.match_url}" class="result-row">
+                    <td>${match.date}</td>
+                    <td>${isHome ? 'Home' : 'Away'}</td>
+                    <td>${opponent}</td>
+                    <td class="score-cell">${this.formatScore(match.score)}</td>
+                    <td class="${resultClass}">${result}</td>
+                  </tr>
+                `;
+              }).join('')}
+            </tbody>
+          </table>
+        </div>
+      `;
+      
+      // Add click listeners to the LOVB rows
+      const resultRows = tabContentContainer.querySelectorAll('.result-row');
+      resultRows.forEach(row => {
+        row.addEventListener('click', () => {
+          const url = row.getAttribute('data-url');
+          if (url) {
+            window.open(url, '_blank');
+          }
+        });
       });
-    });
+    } else if (level === 'PVF Pro') {
+      // Render PVF style table
+      tabContentContainer.innerHTML = `
+        <div class="table-container pvf-table">
+          <h3 class="results-title">2025 Season Schedule</h3>
+          <table>
+            <thead>
+              <tr>
+                <th>Date</th>
+                <th>Home Team</th>
+                <th>Away Team</th>
+                <th>Score</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${this.resultsData.map(match => {
+                const formattedDate = this.formatPvfDate(match.date);
+                
+                // Create action links
+                const actionLinks = [];
+                
+                if (match.video) {
+                  actionLinks.push(`<a href="${match.video}" target="_blank" class="table-action" title="Watch Video"><i class="video-icon"></i></a>`);
+                }
+                if (match.scoreboard) {
+                  actionLinks.push(`<a href="${match.scoreboard}" target="_blank" class="table-action" title="View Scoreboard"><i class="scoreboard-icon"></i></a>`);
+                }
+                if (match.team_stats) {
+                  actionLinks.push(`<a href="${match.team_stats}" target="_blank" class="table-action" title="View Stats"><i class="stats-icon"></i></a>`);
+                }
+                
+                return `
+                  <tr class="result-row" data-url="${match.scoreboard || '#'}">
+                    <td>${formattedDate}</td>
+                    <td>
+                      <div class="team-cell">
+                        ${match.home_team_img ? `<img src="${match.home_team_img}" alt="${match.home_team_name}" class="table-team-logo">` : ''}
+                        <span>${match.home_team_name}</span>
+                      </div>
+                    </td>
+                    <td>
+                      <div class="team-cell">
+                        ${match.away_team_img ? `<img src="${match.away_team_img}" alt="${match.away_team_name}" class="table-team-logo">` : ''}
+                        <span>${match.away_team_name}</span>
+                      </div>
+                    </td>
+                    <td>${this.formatScore(match.score)}</td>
+                    <td class="actions-cell">
+                      <div class="table-actions">
+                        ${actionLinks.join('')}
+                      </div>
+                    </td>
+                  </tr>
+                `;
+              }).join('')}
+            </tbody>
+          </table>
+        </div>
+      `;
+      
+      // Add click listeners to the PVF rows
+      const resultRows = tabContentContainer.querySelectorAll('.result-row');
+      resultRows.forEach(row => {
+        row.addEventListener('click', () => {
+          const url = row.getAttribute('data-url');
+          if (url && url !== '#') {
+            window.open(url, '_blank');
+          }
+        });
+      });
+      
+      // Add click event listeners to table action links
+      const tableActions = tabContentContainer.querySelectorAll('.table-action');
+      if (tableActions) {
+        tableActions.forEach(action => {
+          action.addEventListener('click', (e) => {
+            e.stopPropagation(); // Prevent the row click event
+          });
+        });
+      }
+    }
   }
 
   // Updated findTeamData method that prioritizes team-id
@@ -767,7 +905,8 @@ class TeamDetail extends HTMLElement {
        level === 'LOVB' || level === 'PVF Pro');
     
     // Determine which tabs to show based on league
-    const showResultsTab = level === 'LOVB';
+    const showResultsTab = level === 'LOVB' || level === 'PVF Pro';
+    const resultsTabName = level === 'PVF Pro' ? 'Schedule' : 'Results';
     
     this.shadowRoot.innerHTML = `
       <style>
@@ -1081,6 +1220,70 @@ class TeamDetail extends HTMLElement {
           display: none !important;
         }
         
+        /* PVF Pro specific styles */
+        .pvf-table .team-cell {
+          display: flex;
+          align-items: center;
+          gap: 10px;
+        }
+        
+        .pvf-table .table-team-logo {
+          width: 30px;
+          height: 30px;
+          object-fit: contain;
+        }
+        
+        .pvf-table .actions-cell {
+          width: 100px;
+        }
+        
+        .pvf-table .table-actions {
+          display: flex;
+          gap: 10px;
+        }
+        
+        .pvf-table .table-action {
+          color: var(--text-secondary, #aaaaaa);
+          transition: color 0.2s;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+        }
+        
+        .pvf-table .table-action:hover {
+          color: var(--accent, #5ca5c7);
+        }
+        
+        .pvf-table .video-icon, 
+        .pvf-table .scoreboard-icon, 
+        .pvf-table .stats-icon {
+          width: 20px;
+          height: 20px;
+          display: inline-block;
+          background-size: contain;
+          background-repeat: no-repeat;
+          background-position: center;
+        }
+        
+        .pvf-table .video-icon {
+          background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='rgb(159,159,159)' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><polygon points='23 7 16 12 23 17 23 7'/><rect x='1' y='5' width='15' height='14' rx='2' ry='2'/></svg>");
+        }
+        
+        .pvf-table .scoreboard-icon {
+          background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='rgb(159,159,159)' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><rect x='2' y='3' width='20' height='14' rx='2' ry='2'/><line x1='8' y1='21' x2='16' y2='21'/><line x1='12' y1='17' x2='12' y2='21'/></svg>");
+        }
+        
+        .pvf-table .stats-icon {
+          background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='rgb(159,159,159)' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='M20 14.66V20a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h5.34'/><polygon points='18 2 22 6 12 16 8 16 8 12 18 2'/></svg>");
+        }
+        
+        .results-title {
+          margin-top: 0.5rem;
+          margin-bottom: 1rem;
+          color: var(--accent, #5ca5c7);
+          text-align: center;
+        }
+        
         @keyframes pulse {
           0% { opacity: 0.6; }
           50% { opacity: 0.8; }
@@ -1120,6 +1323,16 @@ class TeamDetail extends HTMLElement {
           .score-second-part {
             display: inline-block !important;
           }
+          
+          /* PVF table mobile adjustments */
+          .pvf-table .table-team-logo {
+            width: 20px;
+            height: 20px;
+          }
+          
+          th, td {
+            padding: 10px 5px;
+          }
         }
       </style>
 
@@ -1137,7 +1350,6 @@ class TeamDetail extends HTMLElement {
                <p class="team-meta"><strong>Division:</strong> ${this.teamData.division || 'N/A'}</p>`
             }
             ${this.teamData.url ? `<p class="team-meta"><strong>Website:</strong> <a href="${this.teamData.url.startsWith('http') ? this.teamData.url : 'https://' + this.teamData.url}" target="_blank" class="team-url">${this.teamData.url}</a></p>` : ''}
-            <p class="team-meta"><strong>Team ID:</strong> <span class="team-id">${teamId}</span></p>
           ` : '<p class="team-meta">Team details not found</p>'}
         </div>
       </div>
@@ -1145,7 +1357,7 @@ class TeamDetail extends HTMLElement {
       <div class="tabs-container">
         <div class="tabs-nav">
           <a class="tab-link ${this.activeTab === 'roster' ? 'active' : ''}" data-tab="roster">Roster</a>
-          ${showResultsTab ? `<a class="tab-link ${this.activeTab === 'results' ? 'active' : ''}" data-tab="results">Results</a>` : ''}
+          ${showResultsTab ? `<a class="tab-link ${this.activeTab === 'results' ? 'active' : ''}" data-tab="results">${resultsTabName}</a>` : ''}
         </div>
         <div class="tab-content-container">
           <!-- Tab content will be rendered here by the renderTabContent method -->
