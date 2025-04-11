@@ -616,8 +616,13 @@ class ViewManager extends HTMLElement {
           </div>
 
           <!-- PVF Schedule Tab -->
-          <div class="tab-content" data-tab="schedule" style="display: ${activeTab === 'schedule' ? 'block' : 'none'}">
-            <pvf-schedule-tab league="${league}" data-timestamp="${timestamp}"></pvf-schedule-tab>
+   <div class="tab-content" data-tab="schedule" style="display: ${activeTab === 'schedule' ? 'block' : 'none'}">
+     ${league === 'NCAA Men' ?
+       `<ncaam-schedule-tab league="${league}" data-timestamp="${timestamp}"></ncaam-schedule-tab>` :
+       league === 'PVF Pro' ?
+       `<pvf-schedule-tab league="${league}" data-timestamp="${timestamp}"></pvf-schedule-tab>` :
+       `<schedule-tab league="${league}" data-timestamp="${timestamp}"></schedule-tab>`
+     }
           </div>
         </div>
       </div>

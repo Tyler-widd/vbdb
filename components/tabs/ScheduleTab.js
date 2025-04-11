@@ -35,7 +35,7 @@ class ScheduleTab extends HTMLElement {
           }
           
           this.matchResults = await response.json();
-          this.filteredResults = [...this.matchResults]; // Initialize filtered results with all results
+          this.filteredResults = [...this.matchResults];
         } catch (error) {
           console.error('Error loading match results:', error);
           this.matchResults = [];
