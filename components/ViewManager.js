@@ -30,7 +30,7 @@ class ViewManager extends HTMLElement {
       <path d="M124.485 7.38385C123.622 7.38385 122.92 6.68225 122.92 5.81988C122.92 4.95758 123.622 4.25598 124.485 4.25598C125.348 4.25598 126.05 4.95758 126.05 5.81988C126.05 6.68225 125.348 7.38385 124.485 7.38385ZM124.485 3.87621C123.412 3.87621 122.54 4.74814 122.54 5.81988C122.54 6.89163 123.412 7.76355 124.485 7.76355C125.557 7.76355 126.43 6.89163 126.43 5.81988C126.43 4.74814 125.557 3.87621 124.485 3.87621Z"></path>
     </svg>
     `;
-    
+
     // Track active tab components to manage state
     this.activeTabComponents = {};
   }
@@ -80,17 +80,17 @@ class ViewManager extends HTMLElement {
       if (hash && hash.startsWith('#/')) {
         // Remove the #/ prefix to get the path
         const path = hash.substring(2);
-        
+
         // Wait for data to load before handling the route
         this.waitForDataToLoadWithRetry(() => {
           this.handlePathRoute(path);
         });
       }
     };
-  
+
     // Listen for hash changes
     window.addEventListener('hashchange', handleHashChange);
-    
+
     // Handle initial hash on page load
     if (window.location.hash) {
       handleHashChange();
@@ -99,21 +99,21 @@ class ViewManager extends HTMLElement {
 
   waitForDataToLoadWithRetry(callback, maxWaitTime = 10000, retryInterval = 300) {
     console.log("Waiting for data to load with retry...");
-    
+
     // Track start time to avoid infinite waiting
     const startTime = Date.now();
     let retryCount = 0;
-    
+
     // Function to check if data is available
     const checkData = () => {
       retryCount++;
-      
+
       // Check if basic data structure exists
       if (window.vbdbData && window.vbdbData.teamsData) {
         // Check if there's actual team data for at least one league
         const levels = Object.keys(window.vbdbData.teamsData);
         let hasData = false;
-        
+
         for (const level of levels) {
           const teams = window.vbdbData.teamsData[level];
           if (teams && teams.length > 0) {
@@ -122,14 +122,14 @@ class ViewManager extends HTMLElement {
             break;
           }
         }
-        
+
         if (hasData) {
           console.log(`Data loaded after ${retryCount} checks.`);
           callback();
           return;
         }
       }
-      
+
       // Check if we've waited too long
       if (Date.now() - startTime > maxWaitTime) {
         console.warn(`Timed out waiting for data after ${retryCount} checks.`);
@@ -137,28 +137,28 @@ class ViewManager extends HTMLElement {
         callback();
         return;
       }
-      
+
       // Try again after a delay
       setTimeout(checkData, retryInterval);
     };
-    
+
     // Start checking
     checkData();
   }
 
   handlePathRoute(path) {
     console.log("Handling route path:", path);
-  
+
     // Remove leading slash if present
     if (path.startsWith('/')) {
       path = path.substring(1);
     }
-  
+
     const pathParts = path.split('/').filter(part => part);
-  
+
     if (pathParts.length >= 1) {
       const levelSegment = pathParts[0].replace(/-/g, ' ');
-  
+
       // Convert kebab case back to proper case for level names
       let properLevel;
       switch (levelSegment.toLowerCase()) {
@@ -180,15 +180,15 @@ class ViewManager extends HTMLElement {
         default:
           properLevel = levelSegment;
       }
-  
+
       const waitForData = () => {
         if (window.vbdbData && window.vbdbData.teamsData) {
           if (pathParts.length >= 3 && pathParts[1] === 'team') {
             const teamId = pathParts[2];
-            
+
             // Find team by ID instead of name
             const teamData = this.findTeamById(properLevel, teamId);
-  
+
             if (teamData) {
               console.log(`Found team by ID: ${teamData.name} (ID: ${teamId}) in ${properLevel}`);
               this.showTeamDetail(properLevel, teamData.name, teamId, false);
@@ -212,7 +212,7 @@ class ViewManager extends HTMLElement {
           setTimeout(waitForData, 100);
         }
       };
-  
+
       waitForData();
     } else {
       console.log("Invalid path format:", path);
@@ -228,53 +228,53 @@ class ViewManager extends HTMLElement {
 
   handleTeamSelected(event) {
     console.log("Team selected event:", event.detail);
-    
+
     // Get the team name, id and level/league from the event
     const teamName = event.detail.teamName;
     const teamId = event.detail.teamId || event.detail.id; // Support both properties
     const level = event.detail.league;
-    
+
     if (!level) {
       console.error("No level or league property found in team-selected event:", event.detail);
       return;
     }
-    
+
     if (!teamId) {
       console.error("No team ID found in team-selected event:", event.detail);
       return;
     }
-    
+
     console.log(`Handling team selection: ${teamName} (ID: ${teamId}) in ${level}`);
     this.showTeamDetail(level, teamName, teamId, true);
   }
 
   showTeamDetail(level, teamName, teamId, updateHistory = true) {
     console.log(`showTeamDetail called with level: "${level}", teamName: "${teamName}", teamId: "${teamId}"`);
-    
+
     // Store the active level and team
     this.activeLeague = level;
     this.activeTeam = teamName;
     this.activeTeamId = teamId;
-    
+
     // Update browser history if needed
     if (updateHistory) {
       const hashUrl = `#/${level.toLowerCase().replace(/\s+/g, '-')}/team/${teamId}`;
       window.history.pushState({ league: level, teamName, teamId }, `${teamName} - ${level}`, hashUrl);
     }
-    
+
     // Get the overlay element
     const overlay = this.shadowRoot.querySelector('.league-overlay');
-    
+
     // Update content before showing the overlay
     const contentContainer = overlay.querySelector('.league-content-container');
-    
+
     // Pass teamId to getTeamDetailHTML
     contentContainer.innerHTML = this.getTeamDetailHTML(level, teamName, teamId);
-    
+
     // Show the overlay with animation
     overlay.classList.add('active');
     document.body.style.overflow = 'hidden'; // Prevent scrolling of background
-    
+
     // Let the browser finish this update before triggering the team-detail initialization
     setTimeout(() => {
       contentContainer.classList.add('active');
@@ -289,7 +289,7 @@ class ViewManager extends HTMLElement {
       // Clear active tab components when changing leagues
       this.activeTabComponents = {};
     }
-    
+
     this.activeLeague = league;
     this.activeTab = tab;
     this.activeTeam = null; // Reset active team
@@ -342,7 +342,7 @@ class ViewManager extends HTMLElement {
       document.body.style.overflow = ''; // Restore scrolling
       this.activeLeague = null;
       this.activeTeam = null;
-      
+
       // Clear active tab components when returning to home
       this.activeTabComponents = {};
     }, 300);
@@ -433,16 +433,16 @@ class ViewManager extends HTMLElement {
         // First, remove the old component to ensure full reset
         const parent = tabComponent.parentElement;
         const oldComponent = tabComponent;
-        
+
         // Create a fresh component
         const newComponent = document.createElement(`${activeTab}-tab`);
         newComponent.setAttribute('league', league);
-        
+
         // Replace the old component with the new one
         if (parent && oldComponent) {
           parent.replaceChild(newComponent, oldComponent);
         }
-        
+
         // Mark this tab as initialized
         this.activeTabComponents[activeTab] = true;
       }
@@ -453,16 +453,16 @@ class ViewManager extends HTMLElement {
   findTeamById(level, teamId) {
     // [existing implementation]
     console.log(`Searching for team with ID "${teamId}" in level "${level}"...`);
-    
+
     if (!window.vbdbData || !window.vbdbData.teamsData) {
       console.error("No data available - vbdbData or teamsData is undefined");
       return null;
     }
-    
+
     // Log all available keys for debugging
     const availableLevels = Object.keys(window.vbdbData.teamsData);
     console.log("Available levels in data:", availableLevels);
-    
+
     // Try different casing/formats of the level name
     const levelVariants = [
       level,
@@ -470,7 +470,7 @@ class ViewManager extends HTMLElement {
       level.toLowerCase(),
       level.split(' ').map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()).join(' ')
     ];
-    
+
     // Try to find teams using any of the level variants
     let teams = null;
     for (const levelVariant of levelVariants) {
@@ -480,50 +480,50 @@ class ViewManager extends HTMLElement {
         break;
       }
     }
-    
+
     // If still no teams found, get all teams from all levels
     if (!teams || teams.length === 0) {
       console.log("Trying to find team by ID across all data...");
-      
+
       const allTeams = [];
       for (const levelKey of availableLevels) {
         if (Array.isArray(window.vbdbData.teamsData[levelKey])) {
           allTeams.push(...window.vbdbData.teamsData[levelKey]);
         }
       }
-      
+
       // Try to find by ID
-      const idMatch = allTeams.find(team => 
-        team.id === teamId || 
+      const idMatch = allTeams.find(team =>
+        team.id === teamId ||
         team.teamId === teamId ||
         (team.id && team.id.toString() === teamId) ||
         (team.teamId && team.teamId.toString() === teamId)
       );
-      
+
       if (idMatch) {
         console.log(`Found team "${idMatch.name}" with ID "${teamId}" in a different level: ${idMatch.level || idMatch.league || 'unknown'}`);
         return idMatch;
       }
-      
+
       console.error(`No team found with ID: "${teamId}" in any level`);
       return null;
     }
-    
+
     console.log(`Found ${teams.length} teams for search`);
-    
+
     // Find the team by ID
-    const match = teams.find(team => 
-      team.id === teamId || 
+    const match = teams.find(team =>
+      team.id === teamId ||
       team.teamId === teamId ||
       (team.id && team.id.toString() === teamId) ||
       (team.teamId && team.teamId.toString() === teamId)
     );
-    
+
     if (match) {
       console.log(`Found team with ID "${teamId}": "${match.name}"`);
       return match;
     }
-    
+
     console.error(`Team with ID "${teamId}" not found`);
     return null;
   }
@@ -548,7 +548,7 @@ class ViewManager extends HTMLElement {
 
   getTeamDetailHTML(level, teamName, teamId) {
     const iconHTML = this.getLeagueIconHTML(level);
-    
+
     return `
       <div class="team-detail-header">
         <button class="back-button">
@@ -559,7 +559,7 @@ class ViewManager extends HTMLElement {
           <h1>${teamName}</h1>
         </div>
       </div>
-      
+
       <div class="team-detail-content">
         <!-- Pass team-id attribute to the component -->
         <team-detail level="${level}" team-name="${teamName}" team-id="${teamId}"></team-detail>
@@ -575,15 +575,25 @@ class ViewManager extends HTMLElement {
 
     return `
       <div class="league-header">
-        <button class="back-button">
-          <i class="fas fa-arrow-left"></i> Back
-        </button>
+
+        <!-- Left side container -->
+        <div class="league-header-left">
+          <a href="/">
+            <img class="vbdb-logo" src="https://raw.githubusercontent.com/widbuntu/vbdb-info/refs/heads/main/assets/favicon.svg"
+                alt="Volleyball Databased Logo" height="40">
+          </a>
+          <button class="back-button">
+            <i class="fas fa-arrow-left"></i> Back
+          </button>
+        </div>
+
+        <!-- Right side with title -->
         <div class="league-title-container">
           ${iconHTML}
           <h1>${league}</h1>
         </div>
       </div>
-      
+
       <div class="league-data">
         <nav class="league-nav">
           <ul>
@@ -593,23 +603,23 @@ class ViewManager extends HTMLElement {
             <li><a href="#" data-tab="schedule" class="${activeTab === 'schedule' ? 'active' : ''}">Schedule</a></li>
           </ul>
         </nav>
-        
+
         <div class="tab-content-container">
           <!-- Teams Tab -->
           <div class="tab-content" data-tab="teams" style="display: ${activeTab === 'teams' ? 'block' : 'none'}">
             <teams-tab league="${league}" data-timestamp="${timestamp}"></teams-tab>
           </div>
-          
+
           <!-- Players Tab -->
           <div class="tab-content" data-tab="players" style="display: ${activeTab === 'players' ? 'block' : 'none'}">
             <players-tab league="${league}" data-timestamp="${timestamp}"></players-tab>
           </div>
-          
+
           <!-- Standings Tab -->
           <div class="tab-content" data-tab="standings" style="display: ${activeTab === 'standings' ? 'block' : 'none'}">
             <standings-tab league="${league}" data-timestamp="${timestamp}"></standings-tab>
           </div>
-          
+
           <!-- Schedule Tab -->
           <div class="tab-content" data-tab="schedule" style="display: ${activeTab === 'schedule' ? 'block' : 'none'}">
             <schedule-tab league="${league}" data-timestamp="${timestamp}"></schedule-tab>
@@ -636,7 +646,7 @@ class ViewManager extends HTMLElement {
           display: block;
           width: 100%;
         }
-        
+
         /* Overlay styling */
         .league-overlay {
           position: fixed;
@@ -651,12 +661,12 @@ class ViewManager extends HTMLElement {
           transition: visibility 0.3s ease, opacity 0.3s ease;
           overflow-y: auto;
         }
-        
+
         .league-overlay.active {
           visibility: visible;
           opacity: 1;
         }
-        
+
         /* Content container styling */
         .league-content-container {
           max-width: 1200px;
@@ -666,27 +676,52 @@ class ViewManager extends HTMLElement {
           transform: translateY(30px);
           transition: opacity 0.5s ease, transform 0.5s ease;
         }
-        
+
         .league-content-container.active {
           opacity: 1;
           transform: translateY(0);
         }
-        
-        /* Header styling */
-        .league-header, .team-detail-header {
+
+        .league-header {
           display: flex;
-          justify-content: space-between;
+          justify-content: space-between; /* This spreads items to opposite ends */
           align-items: center;
-          margin-bottom: 2rem;
+          margin-bottom: 1rem;
           padding-bottom: 1rem;
           border-bottom: 1px solid rgba(255, 255, 255, 0.1);
         }
-        
+
+        .league-header-left {
+          display: flex;
+          align-items: center;
+          gap: 1rem; /* Space between logo and back button */
+        }
+
+        .league-title-container {
+          display: flex;
+          align-items: center;
+          margin-left: auto; /* Alternative approach to push to right */
+        }
+
+        .vbdb-logo {
+          margin-right: 1rem;
+        }
+
+        /* Header styling */
+        .team-detail-header {
+          display: flex;
+          justify-content: flex-start;
+          align-items: center;
+          margin-bottom: 1rem;
+          padding-bottom: 1rem;
+          border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
         .league-title-container {
           display: flex;
           align-items: center;
         }
-        
+
         .league-icon {
           margin-right: 1rem;
           height: 100px;
@@ -694,13 +729,13 @@ class ViewManager extends HTMLElement {
           display: flex;
           align-items: center;
         }
-        
+
         .league-icon img, .league-icon svg {
           max-height: 100px;
           max-width: 100px;
           object-fit: contain;
         }
-        
+
         h1 {
           margin: 0;
           font-size: 2.5rem;
@@ -709,14 +744,14 @@ class ViewManager extends HTMLElement {
           background-clip: text;
           -webkit-text-fill-color: transparent;
         }
-        
+
         h2 {
           font-size: 1.8rem;
           margin-top: 2rem;
           margin-bottom: 1rem;
           color: var(--text, #e0e0e0);
         }
-        
+
         .back-button {
           background: none;
           border: 1px solid var(--accent, #5ca5c7);
@@ -727,17 +762,12 @@ class ViewManager extends HTMLElement {
           transition: all 0.2s ease;
           font-size: 1rem;
         }
-        
+
         .back-button:hover {
           background-color: var(--accent, #5ca5c7);
           color: white;
         }
-        
-        /* Navigation styling */
-        .league-nav {
-          margin-bottom: 2rem;
-        }
-        
+
         .league-nav ul {
           display: flex;
           list-style: none;
@@ -747,34 +777,33 @@ class ViewManager extends HTMLElement {
           border-bottom: 1px solid rgba(255, 255, 255, 0.1);
           padding-bottom: 1rem;
         }
-        
+
         .league-nav a {
           color: var(--text-secondary, #aaaaaa);
           text-decoration: none;
-          padding: 0.5rem 1rem;
           border-radius: 4px;
           transition: all 0.2s ease;
         }
-        
+
         .league-nav a.active {
           color: var(--accent, #5ca5c7);
-          background-color: rgba(92, 165, 199, 0.1);
+          backgroun d-color: rgba(92, 165, 199, 0.1);
           font-weight: 500;
         }
-        
+
         .league-nav a:hover:not(.active) {
           color: var(--text, #e0e0e0);
         }
-        
+
         /* Team detail page placeholders */
         .team-info-placeholder {
           margin-top: 2rem;
         }
-        
+
         .placeholder-section {
           margin-bottom: 3rem;
         }
-        
+
         .placeholder-card {
           background-color: var(--card-bg, #1e1e1e);
           border-radius: 10px;
@@ -783,21 +812,21 @@ class ViewManager extends HTMLElement {
           gap: 2rem;
           animation: pulse 1.5s infinite;
         }
-        
+
         .placeholder-img {
           width: 200px;
           height: 200px;
           background-color: #2a2a2a;
           border-radius: 8px;
         }
-        
+
         .placeholder-text {
           flex: 1;
           display: flex;
           flex-direction: column;
           justify-content: center;
         }
-        
+
         .placeholder-line {
           height: 20px;
           background-color: #2a2a2a;
@@ -805,35 +834,35 @@ class ViewManager extends HTMLElement {
           margin-bottom: 1rem;
           width: 100%;
         }
-        
+
         .placeholder-line:nth-child(2) {
           width: 70%;
         }
-        
+
         .placeholder-line:nth-child(3) {
           width: 50%;
         }
-        
+
         .placeholder-table {
           background-color: var(--card-bg, #1e1e1e);
           border-radius: 10px;
           padding: 1.5rem;
           animation: pulse 1.5s infinite;
         }
-        
+
         .placeholder-header {
           display: flex;
           border-bottom: 1px solid #333;
           padding-bottom: 1rem;
           margin-bottom: 1rem;
         }
-        
+
         .placeholder-row {
           display: flex;
           border-bottom: 1px solid #222;
           padding: 0.8rem 0;
         }
-        
+
         .placeholder-cell {
           flex: 1;
           height: 20px;
@@ -841,20 +870,20 @@ class ViewManager extends HTMLElement {
           border-radius: 4px;
           margin-right: 1rem;
         }
-        
+
         .placeholder-results {
           background-color: var(--card-bg, #1e1e1e);
           border-radius: 10px;
           padding: 1.5rem;
           animation: pulse 1.5s infinite;
         }
-        
+
         .placeholder-result-item {
           display: flex;
           padding: 1rem 0;
           border-bottom: 1px solid #222;
         }
-        
+
         .placeholder-date {
           width: 100px;
           height: 20px;
@@ -862,7 +891,7 @@ class ViewManager extends HTMLElement {
           border-radius: 4px;
           margin-right: 1rem;
         }
-        
+
         .placeholder-teams {
           flex: 1;
           height: 20px;
@@ -870,14 +899,14 @@ class ViewManager extends HTMLElement {
           border-radius: 4px;
           margin-right: 1rem;
         }
-        
+
         .placeholder-score {
           width: 80px;
           height: 20px;
           background-color: #2a2a2a;
           border-radius: 4px;
         }
-        
+
         @keyframes pulse {
           0% {
             opacity: 0.6;
@@ -889,47 +918,47 @@ class ViewManager extends HTMLElement {
             opacity: 0.6;
           }
         }
-        
+
         /* Mobile responsive styles */
         @media (max-width: 768px) {
           .league-header, .team-detail-header {
             flex-direction: column;
             align-items: flex-start;
           }
-          
+
           .back-button {
             margin-bottom: 1rem;
           }
-          
+
           .league-title-container {
             width: 100%;
             justify-content: flex-start;
           }
-          
+
           .league-nav ul {
             flex-wrap: wrap;
           }
-          
+
           h1 {
             font-size: 2rem;
           }
-          
+
           .league-content-container {
             padding: 1rem;
           }
-          
+
           .placeholder-card {
             flex-direction: column;
             gap: 1rem;
           }
-          
+
           .placeholder-img {
             width: 100%;
             height: 150px;
           }
         }
       </style>
-      
+
       <!-- Overlay for league content -->
       <div class="league-overlay">
         <div class="league-content-container"></div>
