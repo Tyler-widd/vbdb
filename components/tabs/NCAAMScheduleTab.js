@@ -362,9 +362,9 @@ class NcaamScheduleTab extends HTMLElement {
             <div class="match-content">
               <div class="team-block home-team">
                 <div class="team-logo">
-                  ${match.home_team_img ? `<img src="${match.home_team_img}" alt="${match.home_team_name}">` : ''}
+                  ${match.away_team_img ? `<img src="${match.away_team_img}" alt="${match.away_team_name}">` : ''}
                 </div>
-                <div class="team-name">${match.home_team_name}</div>
+                <div class="team-name">${match.away_team_name}</div>
               </div>
               
               <div class="match-details">
@@ -374,9 +374,9 @@ class NcaamScheduleTab extends HTMLElement {
               </div>
               
               <div class="team-block away-team">
-                <div class="team-name">${match.away_team_name}</div>
+                <div class="team-name">${match.home_team_name}</div>
                 <div class="team-logo">
-                  ${match.away_team_img ? `<img src="${match.away_team_img}" alt="${match.away_team_name}">` : ''}
+                  ${match.home_team_img ? `<img src="${match.home_team_img}" alt="${match.home_team_name}">` : ''}
                 </div>
               </div>
             </div>
@@ -584,7 +584,7 @@ class NcaamScheduleTab extends HTMLElement {
             border: none;
             background-color: #2a2a2a;
             color: var(--text);
-            min-width: 200px;
+            min-width: 150px;
             appearance: none;
             position: relative;
             background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='rgb(159,159,159)' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='M6 9l6 6 6-6'/></svg>");
@@ -851,7 +851,7 @@ class NcaamScheduleTab extends HTMLElement {
             position: relative;
           }
           
-          table::before {
+          thead::before {
             content: '';
             position: absolute;
             top: 0;
@@ -861,9 +861,16 @@ class NcaamScheduleTab extends HTMLElement {
             background: linear-gradient(to right, var(--accent, #7577cd), var(--accent-hover, #5ca5c7));
             z-index: 11;
           }
+
+          thead {
+            position: sticky;
+            top: 0;
+            z-index: 10;
+          }
+
           
           th {
-            background-color: rgba(0, 0, 0, 0.2);
+            background-color: var(--card-bg, #1e1e1e);
             color: var(--accent, #5ca5c7);
             text-align: left;
             padding: 15px;
@@ -964,20 +971,18 @@ class NcaamScheduleTab extends HTMLElement {
             }
             
             .primary-filters {
-              flex-direction: column;
               align-items: center;
               width: 100%;
             }
             
             .filters-wrapper {
-              flex-direction: column;
               align-items: center;
               width: 100%;
             }
             
-            .team-filter, .year-selector {
+            .team-filter {
               width: 100%;
-              max-width: 300px;
+              max-width: 50px;
               padding: 12px 35px 12px 15px;
               font-size: 16px;
             }
@@ -1127,12 +1132,16 @@ class NcaamScheduleTab extends HTMLElement {
                 <select class="team-filter">
                   ${this.getTeamOptions()}
                 </select>
-                
-                <select class="year-selector">
-                  ${this.getYearOptions()}
-                </select>
+
+              <div class="date-input-group">
+                <span class="date-label">From:</span>
+                <input type="date" id="start-date" class="date-input" value="${this.startDate || ''}">
               </div>
-              
+              <div class="date-input-group">
+                <span class="date-label">To:</span>
+                <input type="date" id="end-date" class="date-input" value="${this.endDate || ''}">
+              </div>
+                          
               <button class="view-toggle" title="${this.viewMode === 'card' ? 'Switch to Table View' : 'Switch to Card View'}">
                 ${this.viewMode === 'card' ? 
                   `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -1152,18 +1161,8 @@ class NcaamScheduleTab extends HTMLElement {
                 }
               </button>
             </div>
-            
-            <div class="date-range-filter">
-              <div class="date-input-group">
-                <span class="date-label">From:</span>
-                <input type="date" id="start-date" class="date-input" value="${this.startDate || ''}">
-              </div>
-              <div class="date-input-group">
-                <span class="date-label">To:</span>
-                <input type="date" id="end-date" class="date-input" value="${this.endDate || ''}">
-              </div>
-            </div>
           </div>
+        </div>
           
           ${this.viewMode === 'card' ? 
             `<div class="match-grid">
